@@ -78,13 +78,31 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 def plot_ntree(
     N,
-    figsize = (10,5)):
+    figsize = (10,5),
+    xlim = None,
+    ylim=None,
+    zlim = None):
+    
+    """
+    Ex: 
+    mpu.plot_ntree(ntree_obj,ylim = [-300,100])
+    """
+    
     fig = plt.figure(figsize=figsize)
     ax1 = plt.subplot(121)
-    N.draw_2D(fig, ax=ax1, projection='xz')
-
-
     ax2= plt.subplot(122)
+    
+    if xlim is not None:
+        ax1.set_xlim(xlim)
+        
+    if ylim is not None:
+        ax2.set_xlim(ylim)
+        
+    if zlim is not None:
+        ax1.set_ylim(zlim)
+        ax2.set_ylim(zlim)
+        
+    N.draw_2D(fig, ax=ax1, projection='xz')    
     N.draw_2D(fig, ax=ax2, projection='yz')
     
     
