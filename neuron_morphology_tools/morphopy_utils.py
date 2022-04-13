@@ -168,6 +168,7 @@ def morphometrics(
         return nt.NeuronTree(graph=subgraph)
     
     if N is None:
+        #print(f"Creating n object")
         N = mpu.ntree_obj_from_swc(swc)
     
     z = dict()

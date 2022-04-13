@@ -11,6 +11,8 @@ import system_utils as su
 soma_node_name_global = "S0"
 node_label = "u"
 
+auto_proof_filter_name_default = "auto_proof_filter"
+
 dynamic_attributes_default = (
  'spine_data',
  'synapse_data',
@@ -222,7 +224,7 @@ def export_swc_dicts(
     use_skeletal_coordinates = True,
     soma_node_name = soma_node_name_global,
     default_skeleton_pt = "mesh_center",
-    default_compartment = "dendrite",#"undefined",
+    default_compartment = "basal",#"undefined",
     center_on_soma= True,
     coordinate_divisor = 1000,
     width_divisor = 1000,
@@ -711,23 +713,46 @@ def split_location_node_map_df(
         for limb_name,split_loc in filter_splits.items():
             G_limb = nxu.limb_graph(G_search,limb_name)
 
-            sk_pts,sk_names = nxu.skeleton_coordinates_from_G(
-                G_limb,
-                return_node_names=True,
-                verbose = False)
+#             sk_pts,sk_names = nxu.skeleton_coordinates_from_G(
+#                 G_limb,
+#                 return_node_names=True,
+#                 verbose = False)
 
             if len(G_limb) == 0:
                 raise Exception("Empty graph")
 
             for i,s in enumerate(split_loc):
-
+                
                 local_split = dict(limb_split_idx = i,
                                    limb_name = limb_name,
                                    coord = s,
                                   filter_name = filter_name)
-                dist_from_split = np.linalg.norm(sk_pts - s,axis = 1)
-                min_dist = np.min(dist_from_split)
+                
+                """
+                4/13: Want to determine the node that has the lowest average distance
+                
+                Pseudocode:
+                1) Iterate through all of the nodes
+                2) Build a KDTree on their skeleton points
+                3) Find the average distance
+                4) Add to name and distance to list to find min later
+                
+                """
+                sk_names = []
+                dist_from_split = []
+                for n in nxu.limb_branch_nodes(G_limb):
+                    '''    
+                    dist_from_split = np.linalg.norm(sk_pts - s,axis = 1)
+                    '''
+                    n_kd = KDTree(G_limb.nodes[n]["skeleton_data"])
+                    dist,_ = n_kd.query(s.reshape(-1,3))
+                    sk_names.append(n)
+                    dist_from_split.append(np.mean(dist))
+                    
+                sk_names = np.array(sk_names)
+                dist_from_split = np.array(dist_from_split)
 
+                min_dist = np.min(dist_from_split)
                 min_arg = np.where(dist_from_split == min_dist)[0]
                 min_nodes = sk_names[min_arg]
 
@@ -752,12 +777,88 @@ def split_location_node_map_df(
     split_df = pd.DataFrame.from_records(split_info)
     
     if error_on_non_unique_node_names:
-        pass
+        if len(split_df["node"].unique()) != len(split_df):
+            raise Exception("Not unique nodes")
     
     if verbose:
         print(f"Total split mappings: {len(split_df)}")
     
     return split_df
+
+def nodes_with_auto_proof_filter(
+    G,
+    return_filter_names=False,
+    verbose = False,
+    ):
+    return xu.nodes_with_non_none_attributes(
+        G,
+        attribute_name=nxu.auto_proof_filter_name_default,
+        return_attribute_value=return_filter_names,
+        verbose=verbose)
+
+def set_auto_proof_filter_attribute(
+    G,
+    split_df = None,
+    split_locations = None,
+    inplace = True,
+    filter_attribute_name = None,
+    default_value = None,
+    verbose = False,
+    error_on_non_unique_node_names=True,
+    **kwargs
+    ):
+    """
+    Purpose: To take the split locations df and
+    to label the nodes with the right error
+    """
+    
+    if split_df is None:
+        split_df = nxu.split_location_node_map_df(
+            G = G,
+            split_locations=split_locations,
+            verbose = verbose,
+            error_on_non_unique_node_names=error_on_non_unique_node_names,
+            **kwargs
+            )
+
+    if filter_attribute_name is None:
+        filter_attribute_name = nxu.auto_proof_filter_name_default
+
+    if not inplace:
+        G = copy.deepcopy(G)
+
+    xu.set_node_attribute(
+        G,
+        attribute_name = filter_attribute_name,
+        attribute_value = default_value
+    )
+
+    filter_names = split_df["filter_name"]
+    nodes_to_label = split_df["node"]
+
+    for n,f in zip(nodes_to_label,filter_names):
+        if error_on_non_unique_node_names:
+            G.nodes[n][filter_attribute_name] = f
+        else:
+            if G.nodes[n][filter_attribute_name] is None:
+                G.nodes[n][filter_attribute_name] = []
+            G.nodes[n][filter_attribute_name].append(f)
+
+    if verbose:
+        print(f"nodes with filter attributes")
+        nxu.nodes_with_auto_proof_filter(
+            G,
+            verbose = True)
+
+    return G
+
+def segment_id_from_G(G,return_split_index = True):
+    seg_id = G.graph["segment_id"]
+    if return_split_index:
+         return seg_id,G.graph["split_index"]
+    else:
+        return seg_id
+
 
 
     
