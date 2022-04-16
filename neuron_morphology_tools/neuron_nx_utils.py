@@ -171,11 +171,96 @@ def small_starter_branches(
 import neuron_nx_utils as nxu
 import copy
 
+import copy
+import networkx_utils as xu
+
+def remove_node(
+    G,
+    node,
+    inplace = False,
+    verbose = False,
+    maintain_skeleton_connectivity = True,
+    **kwargs
+    ):
+    """
+    Purpose: To remove a node from the graph
+    and to reconnect the downstream children
+
+    Pseudocode: 
+    1) Get any downstream nodes 
+        a. (if none then just delete and return)
+    2) For each downstream node:
+
+    Attributes that need to be changed: 
+
+    # if ask to alter skeleton
+    endpoint_upstream --> parent endpoint_upstream
+    skeleton_coordinates --> add parent endpoint_upstream
+
+    #the soma information
+    'soma_start_vec': array([-0.375219  , -0.91207943, -0.16529313]),
+     'soma_start_angle': 24.21}
+     
+     
+    Ez: 
+    new_G = nxu.remove_node(
+    G,
+    node="L0_22",
+    inplace = False,
+    verbose = True,
+    maintain_skeleton_connectivity = True,
+        )
+
+    nxu.soma_connected_nodes(new_G)
+    new_G.nodes["L0_19"]["skeleton_data"],new_G.nodes["L0_20"]["skeleton_data"]
+
+    """
+
+    if not inplace:
+        G = copy.deepcopy(G)
+
+    nodes = nu.convert_to_array_like(node)
+    for node in nodes:
+        if verbose:
+            print(f"--Working on removing node {node}")
+        downstream_nodes = xu.downstream_nodes(G,node)
+
+        if verbose:
+            print(f"downstream_nodes = {downstream_nodes}")
+
+        if len(downstream_nodes) > 0:
+            if node in nxu.soma_connected_nodes(G):
+                soma_vals = ["soma_start_vec","soma_start_angle"]
+                if verbose:
+                    print(f"Adding {soma_vals} to the downstream nodes")
+                for att in soma_vals:
+                    for n in downstream_nodes:
+                        G.nodes[n][att]  =  G.nodes[node][att]
+
+            if maintain_skeleton_connectivity:
+                endpoint_upstream = G.nodes[node]["endpoint_upstream"]
+                width_upstream = G.nodes[node]["width_new"]["no_spine_median_mesh_center"]
+                skeletal_length_upstream = G.nodes[node]["skeletal_length"]
+                if verbose:
+                    print(f"Adding endpoint_upstream {endpoint_upstream} to the downstream nodes skeleton")
+                for n in downstream_nodes:
+                    G.nodes[n]["endpoint_upstream"]  = endpoint_upstream
+                    G.nodes[n]["skeleton_data"] = np.concatenate([[endpoint_upstream],G.nodes[n]["skeleton_data"]])
+                    for i,(k) in enumerate(G.nodes[n]["width_data"]):
+                        G.nodes[n]["width_data"][i]["upstream_dist"] = G.nodes[n]["width_data"][i]["upstream_dist"] + width_upstream
+                    G.nodes[n]["width_data"] = [dict(upstream_dist=skeletal_length_upstream,
+                                                     width = width_upstream)] + G.nodes[n]["width_data"]
+                    
+        xu.remove_node_reattach_children_di(G,node,inplace = True)
+    return G
+    
+
 def remove_small_starter_branches(
     G,
     skeletal_length_min= None,
     inplace = False,
     verbose = True,
+    maintain_skeleton_connectivity = True,
     **kwargs):
     """
     Purpose: To remove small starter branches from 
@@ -183,17 +268,33 @@ def remove_small_starter_branches(
     
     Ex: 
     nxu.remove_small_starter_branches(G,verbose = True)
+    
+    Ex 2:
+    new_G = nxu.remove_small_starter_branches(
+        G,
+        skeletal_length_min = 100000000000,
+    )
     """
 
     if not inplace:
         G = copy.deepcopy(G)
 
-    sm_st_branches = nxu.small_starter_branches(G,verbose = verbose,**kwargs)
+    sm_st_branches = nxu.small_starter_branches(
+        G,
+        verbose = verbose,
+        skeletal_length_min = skeletal_length_min,
+        **kwargs)
 
-    for s_b in sm_st_branches:
-        if verbose:
-            print(f"Removing {s_b}")
-        xu.remove_edge_reattach_children_di(G,s_b,inplace = True)
+#     for s_b in sm_st_branches:
+# #         if verbose:
+# #             print(f"Removing {s_b}")
+    nxu.remove_node(
+        G,
+        sm_st_branches,
+        verbose= verbose,
+        inplace = True,
+        maintain_skeleton_connectivity=maintain_skeleton_connectivity,
+        **kwargs)
 
     return G
 
@@ -860,6 +961,98 @@ def segment_id_from_G(G,return_split_index = True):
         return seg_id
 
 
+# ---------- For filtering parts of the graph ---------
+def soma_connected_nodes(
+    G,
+    ):
+    return list(G[nxu.soma_node_name_global].keys())
 
+def add_node_attribute(
+    G,
+    attribute_func,
+    attribute_name = None,
+    nodes=None,
+    inplace = True,
+    verbose=False,
+    default_value = None,
+    attribute_value_dict = None,
+    verbose_loop = False
+    ):
+    
+    """
+    Puprose: Will apply an attribute_func
+    to a node based on the current node values
+    """
+    
+    if nodes is None:
+        nodes = nxu.limb_branch_nodes(G)
+        
+    if not inplace:
+        G = copy.deepcopy(G)
+    
+    attribute_func = nu.convert_to_array_like(attribute_func)
+    
+    if verbose:
+        print(f"Attribute functions")
+        print(f"{[k.__name__ for k in attribute_func]}")
+        
+    for att_func in attribute_func:
+        if attribute_name is None:
+            curr_name = str(att_func.__name__)
+        else:
+            curr_name = attribute_name
+
+        if verbose:
+            print(f"\n\n---Setting {curr_name}, att_func ={att_func}")
+
+        for n in nodes:
+            if attribute_value_dict is not None:
+                attr_value = attribute_value_dict.get(n,curr_name,default_value)
+            else:
+                try:
+                    attr_value = att_func(G.nodes[n])
+                except:
+                    if default_value is not None:
+                        attr_value = default_value
+                    else:
+                        raise Exception("")
+            if verbose_loop:
+                print(f"For node {n}, {curr_name} = {attr_value}")
+            G.nodes[n][curr_name] = attr_value
+        
+    return G
+
+def add_node_attributes_for_feature_matrix(
+    G,
+    **kwargs
+    ):
+    
+    def skeleton_vector_upstream_x(node_dict):
+        return node_dict[f"skeleton_vector_upstream"][0]
+    def skeleton_vector_upstream_y(node_dict):
+        return node_dict[f"skeleton_vector_upstream"][1]
+    def skeleton_vector_upstream_z(node_dict):
+        return node_dict[f"skeleton_vector_upstream"][2]
+    def skeleton_vector_downstream_x(node_dict):
+        return node_dict[f"skeleton_vector_downstream"][0]
+    def skeleton_vector_downstream_y(node_dict):
+        return node_dict[f"skeleton_vector_downstream"][1]
+    def skeleton_vector_downstream_z(node_dict):
+        return node_dict[f"skeleton_vector_downstream"][2]
+
+    G_new_feats = nxu.add_node_attribute(
+        G,
+        attribute_func=[
+            skeleton_vector_upstream_x,
+            skeleton_vector_upstream_y,
+            skeleton_vector_upstream_z,
+            skeleton_vector_downstream_x,
+            skeleton_vector_downstream_y,
+            skeleton_vector_downstream_z,
+        ],
+        **kwargs
+        )
+    
+    return G_new_feats
     
 import neuron_nx_utils as nxu

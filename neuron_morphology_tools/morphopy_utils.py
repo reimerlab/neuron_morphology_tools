@@ -12,6 +12,49 @@ from morphopy.neurontree.utils import get_standardized_swc
 import pandas as pd
 
 
+exc_features_berenslab = ['"apical" branch points' ,'"apical" height',
+ '"apical" log1p number of outer bifurcations',
+ '"apical" mean bifurcation distance' ,'"apical" robust height',
+ '"apical" robust width' ,'"apical" std bifurcation distance',
+ '"apical" total length', '"apical" width',
+ 'dendrite bifurcation standard deviation', 'dendrite branch points',
+ 'dendrite first bifurcation moment' ,'dendrite height',
+ 'dendrite log max tortuosity' ,'dendrite log min tortuosity',
+ 'dendrite max Euclidean dist' ,'dendrite max branch order',
+ 'dendrite max path distance to soma', 'dendrite max segment length',
+ 'dendrite mean neurite radius', 'dendrite median path angle',
+ 'dendrite min branch angle' ,'dendrite robust height',
+ 'dendrite robust width', 'dendrite tips' ,'dendrite total length',
+ 'dendrite width', 'dendrite x-bias', 'dendrite z-bias', 'normalized depth',
+ 'soma radius', 'stems' ,'stems exiting down' ,'stems exiting to the sides',
+ 'stems exiting up']  
+
+inh_features_berenslab = [
+ 'EMD axon dendrite' ,'Log1p fraction of axon above dendrite',
+ 'Log1p fraction of axon below dendrite',
+ 'Log1p fraction of dendrite above axon',
+ 'Log1p fraction of dendrite below axon', 'axon above soma',
+ 'axon bifurcation standard deviation' ,'axon branch points',
+ 'axon first bifurcation moment' ,'axon height' ,'axon log min tortuosity',
+ 'axon max Euclidean dist', 'axon max branch order',
+ 'axon max path distance to soma' ,'axon max segment length',
+ 'axon mean neurite radius' ,'axon min branch angle', 'axon robust height',
+ 'axon robust width' ,'axon tips', 'axon total length' ,'axon width',
+ 'axon x-bias' ,'axon z-bias' ,'dendrite above soma',
+ 'dendrite bifurcation standard deviation', 'dendrite branch points',
+ 'dendrite first bifurcation moment', 'dendrite height',
+ 'dendrite log max tortuosity', 'dendrite log median tortuosity',
+ 'dendrite log min tortuosity', 'dendrite max Euclidean dist',
+ 'dendrite max branch angle', 'dendrite max branch order',
+ 'dendrite max path distance to soma' ,'dendrite max segment length',
+ 'dendrite mean neurite radius', 'dendrite min branch angle',
+ 'dendrite robust height' ,'dendrite robust width', 'dendrite tips',
+ 'dendrite total length', 'dendrite width' ,'dendrite x-bias',
+ 'dendrite z-bias' ,'mean initial segment radius', 'normalized depth',
+ 'soma radius', 'stems', 'stems exiting down' ,'stems exiting to the sides',
+ 'stems exiting up']  
+
+
 def swc_df_from_file(filepath):
     """
     Purpose: To read in a swc file as a dataframe
@@ -121,7 +164,14 @@ def morphometrics(
     swc = None,
     depth=100,
     thickness=1000,
-    cell_id = None):
+    cell_id = None,
+    stats_to_remove=(
+    'dendrite z-profile',
+    'axon z-profile',
+    'axon soma-centered z-profile',
+    'dendrite soma-centered z-profile'
+        )):
+    
 
     def get_perc_above_below_overlap(profile_a, profile_b):
     
@@ -391,6 +441,9 @@ def morphometrics(
         z['cell id'] = file_name
         
     morphometry_data = pd.DataFrame(z)
+    
+    if stats_to_remove is not None:
+        morphometry_data = morphometry_data[list(stats_to_remove)]
     
     return morphometry_data
 
