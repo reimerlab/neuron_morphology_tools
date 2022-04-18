@@ -19,6 +19,7 @@ dynamic_attributes_default = (
  'width_data',
   'skeleton_data')
 import copy
+
 def delete_attributes(
     G,
     inplace = True,
@@ -180,6 +181,7 @@ def remove_node(
     inplace = False,
     verbose = False,
     maintain_skeleton_connectivity = True,
+    remove_all_downstream_nodes = False,
     **kwargs
     ):
     """
@@ -213,6 +215,17 @@ def remove_node(
 
     nxu.soma_connected_nodes(new_G)
     new_G.nodes["L0_19"]["skeleton_data"],new_G.nodes["L0_20"]["skeleton_data"]
+    
+    
+    Ex 2: Deleting all downstream nodes
+    nodes = ["L1_10","L1_2","L1_8","L0_20"]
+    G_del = nxu.remove_node(
+        G,
+        node=nodes,
+        inplace=False,
+        verbose = True,
+        remove_all_downstream_nodes = True
+    )
 
     """
 
@@ -223,12 +236,18 @@ def remove_node(
     for node in nodes:
         if verbose:
             print(f"--Working on removing node {node}")
+        
+        if node not in G:
+            if verbose:
+                print(f"node {node} wasn't in graph nodes so continuing")
+            continue
+            
         downstream_nodes = xu.downstream_nodes(G,node)
 
         if verbose:
             print(f"downstream_nodes = {downstream_nodes}")
 
-        if len(downstream_nodes) > 0:
+        if len(downstream_nodes) > 0 and not remove_all_downstream_nodes:
             if node in nxu.soma_connected_nodes(G):
                 soma_vals = ["soma_start_vec","soma_start_angle"]
                 if verbose:
@@ -251,7 +270,18 @@ def remove_node(
                     G.nodes[n]["width_data"] = [dict(upstream_dist=skeletal_length_upstream,
                                                      width = width_upstream)] + G.nodes[n]["width_data"]
                     
-        xu.remove_node_reattach_children_di(G,node,inplace = True)
+        if not remove_all_downstream_nodes:
+            xu.remove_node_reattach_children_di(G,node,inplace = True)
+        else:
+            all_downstream_nodes = xu.all_downstream_nodes(G,node)
+            total_nodes_to_delete = [node] 
+            if len(all_downstream_nodes) > 0:
+                total_nodes_to_delete += list(all_downstream_nodes)
+                
+            if verbose:
+                print(f"Removing all downstream nodes along with node {node}: {total_nodes_to_delete}")
+            G = xu.remove_nodes_from(G,total_nodes_to_delete)
+            
     return G
     
 
@@ -544,6 +574,9 @@ def branch_from_node_name(name):
 def limb_branch_nodes(G):
     return [k for k in G.nodes() if "S" not in k]
 
+def limb_branch_subgraph(G):
+    return G.subgraph(nxu.limb_branch_nodes(G))
+
 def all_limb_idxs_in_G(G):
     return np.sort(np.unique([nxu.limb_from_node_name(k)
                      for k in limb_branch_nodes(G)]))
@@ -554,7 +587,8 @@ def all_limb_graphs(G):
 
 def limb_graph(
     G,
-    limb_idx,
+    limb_idx=None,
+    most_upstream_node = None,
     branches_idx = None,
     verbose = False,
     ):
@@ -563,25 +597,38 @@ def limb_graph(
     
     Ex: nxu.limb_graph(G_ax,limb_idx = 3,verbose = True)
     """
-    if type(limb_idx) == str:
-        limb_idx = int(limb_idx[1:])
-        
-    if limb_idx == -1:
-        if verbose:
-            print(f"Returning whole graph")
-        return G
     
-    subgraph_nodes = [k for k in nxu.limb_branch_nodes(G)
-                     if nxu.limb_from_node_name(k) == limb_idx]
+    if limb_idx is not None:
+        if verbose:
+            print(f"Using the limb_idx method")
+        if type(limb_idx) == str:
+            limb_idx = int(limb_idx[1:])
+
+        if limb_idx == -1:
+            if verbose:
+                print(f"Returning whole graph")
+            return G
+
+        subgraph_nodes = [k for k in nxu.limb_branch_nodes(G)
+                         if nxu.limb_from_node_name(k) == limb_idx]
+        
+        if branches_idx is not None:
+            subgraph_nodes = [k for k in subgraph_nodes
+                             if nxu.branch_from_node_name(k) in branches_idx]
+
+            if verbose:
+                print(f"subgraph_nodes after branch restriction: {subgraph_nodes}")
+    elif most_upstream_node is not None:
+        if verbose:
+            print(f"Using the most upstream method")
+        subgraph_nodes = xu.all_downstream_nodes(
+            G,
+            most_upstream_node,
+            include_self=True)
+    else:
+        raise Exception("")
     if verbose:
-        print(f"subgraph_nodes after limb restriction: {subgraph_nodes}")
-    
-    if branches_idx is not None:
-        subgraph_nodes = [k for k in subgraph_nodes
-                         if nxu.branch_from_node_name(k) in branches_idx]
-        
-        if verbose:
-            print(f"subgraph_nodes after branch restriction: {subgraph_nodes}")
+        print(f"subgraph_nodes after restriction: {subgraph_nodes}")
         
     return G.subgraph(subgraph_nodes)
 
@@ -967,92 +1014,352 @@ def soma_connected_nodes(
     ):
     return list(G[nxu.soma_node_name_global].keys())
 
-def add_node_attribute(
+
+import numpy as np
+def most_upstream_nodes(
     G,
-    attribute_func,
-    attribute_name = None,
-    nodes=None,
-    inplace = True,
-    verbose=False,
-    default_value = None,
-    attribute_value_dict = None,
-    verbose_loop = False
+    nodes,
+    verbose = False,
+    return_downstream_count = True,
     ):
-    
     """
-    Puprose: Will apply an attribute_func
-    to a node based on the current node values
+    Purpose: To get a count of the number of
+    downstream nodes
+    
+    Ex: 
+    nxu.most_upstream_nodes(
+        G,
+        nodes = ["L1_10","L1_2","L1_8","L0_20"],
+        verbose = True
+    )
     """
+    nodes = np.array(nodes)
+
+    down_count = np.array([xu.n_all_downstream_nodes(G,k) for k in nodes])
+    down_count_idx_sorted = np.flip(np.argsort(down_count))
+    nodes_sorted = nodes[down_count_idx_sorted]
+    down_count_sorted = down_count[down_count_idx_sorted]
+
+    if verbose:
+        print(f"nodes_sorted = {nodes_sorted}")
+        print(f"down_count_sorted = {down_count_sorted}")
     
-    if nodes is None:
-        nodes = nxu.limb_branch_nodes(G)
-        
-    if not inplace:
-        G = copy.deepcopy(G)
+    if return_downstream_count:
+        return nodes_sorted,down_count_sorted
+    else:
+        return nodes_sorted
     
-    attribute_func = nu.convert_to_array_like(attribute_func)
+def limb_graphs_from_soma_connected_nodes(
+    G,
+    verbose = False,
+    plot = False,
+    ):
+    """
+    Purpose: To get all of the limb graphs
+    defined by those boardering the soma
+
+    Pseucode: 
+    1) Get all of the soma connected nodes
+    2) For each soma connected node: get the connected subgraph
+    
+    Ex: 
+    limb_graphs = nxu.limb_graphs_from_soma_connected_nodes(
+    G,
+    verbose = True,
+    plot = False,
+    )
+    """
+    soma_conn_nodes = nxu.soma_connected_nodes(G)
+    if verbose:
+        print(f"soma_conn_nodes = {soma_conn_nodes}")
+
+    total_limb_graphs = []
+    for node in soma_conn_nodes:
+        if verbose:
+            print(f"-- Working on soma node {node}")
+        limb_graph = nxu.limb_graph(G,most_upstream_node=node)
+
+        if plot:
+            most_up_node = xu.most_upstream_node(limb_graph)
+            print(f"Plotting limb with most upstream node {most_up_node}")
+            nxu.draw_tree(limb_graph)
+            print(f"\n\n")
+
+        total_limb_graphs.append(limb_graph)
+
+    return total_limb_graphs
+
+
+def distance_from_node_to_soma(
+    G,
+    node,
+    include_self_distance = False,
+    distance_attribute = "skeletal_length",
+    destination_node = "S0",
+    verbose = False,
+    return_path= False,
+    ):
+    """
+    Purpose: To find the distance of a node from soma
+    (both with inclusion and without of its own skeletal length)
+
+    Pseudocode: 
+    1) 
+    """
+
+
+    total_lengths = []
+    node_path = []
     
     if verbose:
-        print(f"Attribute functions")
-        print(f"{[k.__name__ for k in attribute_func]}")
-        
-    for att_func in attribute_func:
-        if attribute_name is None:
-            curr_name = str(att_func.__name__)
-        else:
-            curr_name = attribute_name
+        print(f"Finding distance from {node} to {destination_node}")
 
+    if include_self_distance:
+        total_lengths.append(G.nodes[node][distance_attribute])
+        node_path.append(node)
+
+    upstream_node = xu.upstream_node(G,node)
+
+    while upstream_node != destination_node:
         if verbose:
-            print(f"\n\n---Setting {curr_name}, att_func ={att_func}")
+            print(f"Working on upstream node {upstream_node}")
 
-        for n in nodes:
-            if attribute_value_dict is not None:
-                attr_value = attribute_value_dict.get(n,curr_name,default_value)
-            else:
-                try:
-                    attr_value = att_func(G.nodes[n])
-                except:
-                    if default_value is not None:
-                        attr_value = default_value
-                    else:
-                        raise Exception("")
-            if verbose_loop:
-                print(f"For node {n}, {curr_name} = {attr_value}")
-            G.nodes[n][curr_name] = attr_value
-        
-    return G
+        node_path.append(upstream_node)
+        total_lengths.append(G.nodes[upstream_node][distance_attribute])
+        upstream_node = xu.upstream_node(G,upstream_node)
 
-def add_node_attributes_for_feature_matrix(
+    path_length = np.sum(total_lengths)
+    if verbose:
+        print(f"path_length = {path_length}")
+        print(f"Path to soma: {node_path}")
+        print(f"Path {distance_attribute}: {total_lengths}")
+
+    if return_path:
+        return path_length,node_path
+    else:
+        return path_length
+    
+def distance_upstream_from_soma(
     G,
+    node,
+    verbose = False,
     **kwargs
     ):
+    """
+    nxu.distance_upstream_from_soma(
+    G,
+    "L0_19",
+    verbose = True,   
+    )
+    """
     
-    def skeleton_vector_upstream_x(node_dict):
-        return node_dict[f"skeleton_vector_upstream"][0]
-    def skeleton_vector_upstream_y(node_dict):
-        return node_dict[f"skeleton_vector_upstream"][1]
-    def skeleton_vector_upstream_z(node_dict):
-        return node_dict[f"skeleton_vector_upstream"][2]
-    def skeleton_vector_downstream_x(node_dict):
-        return node_dict[f"skeleton_vector_downstream"][0]
-    def skeleton_vector_downstream_y(node_dict):
-        return node_dict[f"skeleton_vector_downstream"][1]
-    def skeleton_vector_downstream_z(node_dict):
-        return node_dict[f"skeleton_vector_downstream"][2]
+    return distance_from_node_to_soma(
+    G,
+    node,
+    include_self_distance = False,
+    verbose = verbose,
+    return_path= False,
+    **kwargs
+    )
 
-    G_new_feats = nxu.add_node_attribute(
+def distance_downstream_from_soma(
+    G,
+    node,
+    verbose = False,
+    **kwargs
+    ):
+    """
+    Ex: 
+    nxu.distance_downstream_from_soma(
         G,
-        attribute_func=[
-            skeleton_vector_upstream_x,
-            skeleton_vector_upstream_y,
-            skeleton_vector_upstream_z,
-            skeleton_vector_downstream_x,
-            skeleton_vector_downstream_y,
-            skeleton_vector_downstream_z,
-        ],
-        **kwargs
-        )
+        "L0_19",
+        verbose = True,   
+    )
+    """
     
-    return G_new_feats
+    return distance_from_node_to_soma(
+    G,
+    node,
+    include_self_distance = True,
+    verbose = verbose,
+    return_path= False,
+    **kwargs
+    )
+    
+import pandas as pd
+def distance_from_soma_df(
+    G,
+    nodes = None,
+    distance_type = "upstream",):
+    """
+    Purpose: Find all the soma distances of 
+    all the nodes
+    """
+    if nodes is None:
+        nodes = nxu.limb_branch_nodes(G)
+
+    dist_dict = [{"node":n,"soma_distance":getattr(nxu,f"distance_{distance_type}_from_soma")(G,n)}
+                for n in nodes]
+
+    dist_dict = pd.DataFrame.from_records(dist_dict)
+
+    return dist_dict
+
+def distance_upstream_from_soma_df(
+    G,
+    nodes = None,):
+    
+    return nxu.distance_from_soma_df(
+    G,
+    nodes = nodes,
+    distance_type = "upstream",)
+
+def distance_downstream_from_soma_df(
+    G,
+    nodes = None,):
+    
+    return nxu.distance_from_soma_df(
+    G,
+    nodes = nodes,
+    distance_type = "downstream",)
+
+def nodes_distance_query_from_soma(
+    G,
+    distance_threshold,
+    within_distance = True,
+    distance_type = "upstream",
+    nodes=None,
+    return_subgraph=False,
+    return_soma_with_sugraph = True,
+    verbose = False,
+    ):
+    """
+    Purpose: Find all the nodes within
+    a certain distance or farther away than
+    a certain distance from soma
+    """
+    dist_df = getattr(nxu,f"distance_{distance_type}_from_soma_df")(G,nodes=nodes)
+    
+    if within_distance:
+        query = f"soma_distance <= {distance_threshold}"
+        query_descriptor = "closer"
+    else:
+        query = f"soma_distance > {distance_threshold}"
+        query_descriptor = "farther"
+
+    filt_df = dist_df.query(query)
+    
+    filt_nodes = filt_df["node"].to_list()
+    if verbose:
+        print(f"Nodes {distance_type} dist {query_descriptor} than {distance_threshold} from soma ({len(filt_nodes)}):\n{np.array(filt_nodes)} ")
+        
+        
+    if return_subgraph:
+        if return_soma_with_sugraph:
+            filt_nodes += [nxu.soma_node_name_global]
+        return G.subgraph(filt_nodes)
+    else:
+        return filt_nodes
+
+def nodes_within_distance_from_soma(
+    G,
+    distance_threshold,
+    distance_type = "upstream",
+    nodes=None,
+    return_subgraph=False,
+    verbose = False,
+    ):
+    
+    """
+    Ex: 
+    distance_threshold = 1000
+    curr_nodes = nxu.nodes_within_distance_from_soma(G,distance_threshold = distance_threshold,verbose = True)
+    """
+    
+    return nxu.nodes_distance_query_from_soma(
+    G,
+    distance_threshold,
+    within_distance = True,
+    distance_type = distance_type,
+    nodes=nodes,
+    return_subgraph=return_subgraph,
+    verbose = verbose,
+    )
+    
+def nodes_farther_than_distance_from_soma(
+    G,
+    distance_threshold,
+    distance_type = "upstream",
+    nodes=None,
+    return_subgraph=False,
+    verbose = False,
+    ):
+    
+    return nxu.nodes_distance_query_from_soma(
+    G,
+    distance_threshold,
+    within_distance = False,
+    distance_type = distance_type,
+    nodes=nodes,
+    return_subgraph=return_subgraph,
+    verbose = verbose,
+    )
+
+def nodes_within_distance_upstream_from_soma(
+    G,
+    distance_threshold,
+    nodes=None,
+    return_subgraph=False,
+    verbose = False,
+    ):
+    
+    return nxu.nodes_within_distance_from_soma(
+    G,
+    distance_threshold,
+    distance_type = "upstream",
+    nodes=nodes,
+    return_subgraph=return_subgraph,
+    verbose = verbose,
+    )
+
+
+import numpy as np
+def soma_filter_by_complete_graph(
+    G,
+    verbose = False,
+    plot = False):
+    """
+    Problem: Want to resolve the soma so it does
+    not affect...
+
+    Solution 1: Delete the soma network and then 
+    connect all the 
+
+    Pseudocode:
+    1) Connect all the soma connecting nodes
+    2) Get the subgraph of only the limb branches
+    
+    Ex: 
+    G_no_soma = nxu.soma_filter_by_complete_graph(G_filt,plot=True)
+    nxu.draw_tree(G_no_soma)
+    """
+
+
+    soma_conn_nodes = nxu.soma_connected_nodes(G)
+    if verbose:
+        print(f"soma_conn_nodes ({len(soma_conn_nodes)})= {soma_conn_nodes}")
+
+    all_conn = np.concatenate([[(k,v) for v in soma_conn_nodes] for k in soma_conn_nodes])
+
+    if verbose:
+        print(f"New connections ({len(all_conn)}) = {all_conn}")
+
+    G.add_edges_from(all_conn)
+    return_G = nxu.limb_branch_subgraph(G)
+    
+    if plot:
+        nx.draw(nx.Graph(return_G),with_labels = True)
+        
+    return return_G
     
 import neuron_nx_utils as nxu
