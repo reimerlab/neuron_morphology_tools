@@ -1394,6 +1394,7 @@ def soma_filter_by_complete_graph(
     G,
     inplace = False,
     verbose = False,
+    connect_previousl_touching_soma_nodes = False,
     plot = False):
     """
     Problem: Want to resolve the soma so it does
@@ -1412,17 +1413,19 @@ def soma_filter_by_complete_graph(
     """
     if not inplace:
         G = copy.deepcopy(G)
+    
+    if connect_previousl_touching_soma_nodes:
+        soma_conn_nodes = nxu.soma_connected_nodes(G)
+        if verbose:
+            print(f"soma_conn_nodes ({len(soma_conn_nodes)})= {soma_conn_nodes}")
 
-    soma_conn_nodes = nxu.soma_connected_nodes(G)
-    if verbose:
-        print(f"soma_conn_nodes ({len(soma_conn_nodes)})= {soma_conn_nodes}")
+        all_conn = np.concatenate([[(k,v) for v in soma_conn_nodes if v != k] for k in soma_conn_nodes])
 
-    all_conn = np.concatenate([[(k,v) for v in soma_conn_nodes if v != k] for k in soma_conn_nodes])
+        if verbose:
+            print(f"New connections ({len(all_conn)}) = {all_conn}")
 
-    if verbose:
-        print(f"New connections ({len(all_conn)}) = {all_conn}")
-
-    G.add_edges_from(all_conn)
+        G.add_edges_from(all_conn)
+        
     return_G = nxu.limb_branch_subgraph(G)
     
     if plot:

@@ -338,7 +338,7 @@ def GNN_info_compartment_proof(
     
     remove_starter_branches = True,
     divide_into_limbs = False,
-    label_name = ("axon_label","basal_label","apical_label","dendrite_label"),
+    label_name = ("axon_label","basal_label","apical_label",),#"dendrite_label"),
     
     graph_label = None,
     
@@ -369,7 +369,7 @@ def GNN_info_compartment_proof(
         "width_no_spine",
         "width_downstream",
         "axon_label",
-        "dendrite_label",
+        #"dendrite_label",
         "basal_label",
         "apical_label",
         ]
@@ -524,7 +524,7 @@ def GNN_info_cell_type_fine(
         "width_no_spine",
         "width_downstream",
         "axon_label",
-        "dendrite_label",
+        #"dendrite_label",
         "basal_label",
         "apical_label"
         ]
