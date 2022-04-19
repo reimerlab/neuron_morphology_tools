@@ -214,6 +214,7 @@ def feature_df_from_gnn_info(
                 y = np.argmax(y,axis = 1)
         else:
             y = None
+            x = df
             
         
 
