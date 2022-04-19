@@ -5,6 +5,7 @@ import neuron_nx_utils as nxu
 import networkx as nx
 import networkx_utils as xu
 from pathlib import Path
+import numpy as np
 import time
 def export_GNN_info_dict(
     G,
@@ -194,7 +195,7 @@ import pandas_utils as pu
 def feature_df_from_gnn_info(
     gnn_info,
     return_data_labels_split = True,
-    inf_fill_value = 1000):
+    inf_fill_value = 10000):
     df = pd.DataFrame(gnn_info["feature_matrix"])
     df.columns = gnn_info["features"]
 
