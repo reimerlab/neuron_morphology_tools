@@ -205,7 +205,8 @@ def feature_df_from_gnn_info(
 
     if return_data_labels_split:
         if label_name is not None:
-            label_name = list(nu.convert_to_array_like(label_name))
+            if type(label_name) != tuple:
+                label_name = list(nu.convert_to_array_like(label_name))
             y = df[list(label_name)].to_numpy()
             x = pu.delete_columns(df,label_name)
         else:
