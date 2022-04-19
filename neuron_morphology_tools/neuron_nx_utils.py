@@ -971,7 +971,8 @@ def split_location_node_map_df(
 
     split_df = pd.DataFrame.from_records(split_info)
     
-    if error_on_non_unique_node_names:
+    
+    if error_on_non_unique_node_names and len(split_df) > 0:
         if len(split_df["node"].unique()) != len(split_df):
             raise Exception("Not unique nodes")
     
@@ -1029,16 +1030,17 @@ def set_auto_proof_filter_attribute(
         attribute_value = default_value
     )
 
-    filter_names = split_df["filter_name"]
-    nodes_to_label = split_df["node"]
+    if len(split_df) > 0:
+        filter_names = split_df["filter_name"]
+        nodes_to_label = split_df["node"]
 
-    for n,f in zip(nodes_to_label,filter_names):
-        if error_on_non_unique_node_names:
-            G.nodes[n][filter_attribute_name] = f
-        else:
-            if G.nodes[n][filter_attribute_name] is None:
-                G.nodes[n][filter_attribute_name] = []
-            G.nodes[n][filter_attribute_name].append(f)
+        for n,f in zip(nodes_to_label,filter_names):
+            if error_on_non_unique_node_names:
+                G.nodes[n][filter_attribute_name] = f
+            else:
+                if G.nodes[n][filter_attribute_name] is None:
+                    G.nodes[n][filter_attribute_name] = []
+                G.nodes[n][filter_attribute_name].append(f)
 
     if verbose:
         print(f"nodes with filter attributes")

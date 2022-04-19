@@ -118,6 +118,7 @@ def export_GNN_info_dict(
                 G = G_limb,
                 return_df_for_feature_matrix = False,
                 feature_matrix_dtype = feature_matrix_dtype,
+                dense_adjacency=True
 
             )
 
@@ -154,6 +155,7 @@ def export_GNN_info_dict(
                 G = G_no_soma,
                 return_df_for_feature_matrix = False,
                 feature_matrix_dtype = "float",
+                dense_adjacency=True
 
             )
 
@@ -271,7 +273,7 @@ def GNN_info_axon_vs_dendrite(
         "axon_label"
         ]
     
-    print(f"return_filepaths =- {return_filepaths}")
+    #print(f"return_filepaths =- {return_filepaths}")
     
     filepaths = nxio.export_GNN_info_dict(
             G,
