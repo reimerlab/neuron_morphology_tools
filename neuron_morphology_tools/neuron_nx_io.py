@@ -188,6 +188,41 @@ import system_utils as su
 import networkx_utils as xu
 import pandas as pd
 
+import pandas as pd
+import numpy_utils as nu
+import pandas_utils as pu
+def feature_df_from_gnn_info(
+    gnn_info,
+    return_data_labels_split = True,
+    inf_fill_value = 1000):
+    df = pd.DataFrame(gnn_info["feature_matrix"])
+    df.columns = gnn_info["features"]
+
+    df=df.replace([np.inf],inf_fill_value)
+
+    label_name = gnn_info["label_name"]
+
+    if return_data_labels_split:
+        if label_name is not None:
+            label_name = list(nu.convert_to_array_like(label_name))
+            y = df[list(label_name)].to_numpy()
+            x = pu.delete_columns(df,label_name)
+        else:
+            y = None
+
+        return x.to_numpy(),y
+    else:
+        return df
+
+def feature_df_from_adj_feature_dict(adj_feature_dict):
+    if "pandas" not in str(type(adj_feature_dict["feature_matrix"])):
+        df = pd.DataFrame(adj_feature_dict["feature_matrix"])
+        df.columns = adj_feature_dict["features"]
+        df["node"] = adj_feature_dict["nodelist"]
+    else:
+        df = adj_feature_dict["feature_matrix"]
+        
+    return df
 
 def G_from_adj_feature_dict(
     adj_feature_dict=None,
@@ -213,13 +248,8 @@ def G_from_adj_feature_dict(
             print(f"Reading from {filepath}")
         adj_feature_dict = su.decompress_pickle(filepath)
 
+    df = nxio.feature_df_from_adj_feature_dict(adj_feature_dict)
         
-    if "pandas" not in str(type(adj_feature_dict["feature_matrix"])):
-        df = pd.DataFrame(adj_feature_dict["feature_matrix"])
-        df.columns = adj_feature_dict["features"]
-        df["node"] = adj_feature_dict["nodelist"]
-    else:
-        df = adj_feature_dict["feature_matrix"]
     
     G = xu.G_from_adjacency_matrix(
     matrix = adj_feature_dict["adjacency"],
