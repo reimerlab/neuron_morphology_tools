@@ -119,6 +119,125 @@ def width_no_spine(node_dict):
 def axon_label(node_dict):
     return int(node_dict["axon_compartment"] == "axon")
 
+def dendrite_label(node_dict):
+    return int(node_dict["axon_compartment"] == "dendrite")
+
+def compartment_proof(node_dict):
+    return int(nxu.compartment_index_swc_map[node_dict["compartment"]])
+
+def compartment_one_hot(node_dict,compartment):
+    compartment = nu.convert_to_array_like(compartment)
+    return int(node_dict["compartment"] in compartment)
+
+def apical_label(node_dict):
+    return compartment_one_hot(
+        node_dict,
+        ["apical_tuft",
+        "oblique",
+        "apical_shaft",
+        "apical"])
+def basal_label(node_dict):
+    return compartment_one_hot(
+        node_dict,
+        ["basal"])
+
+
+
+def feature_clip(
+    row_dict,
+    feature_name,
+    a_min=0,
+    a_max=100000,
+    ):
+    feature = row_dict[feature_name]
+    if feature is None:
+        return a_max
+    
+    return np.clip(feature,a_min = a_min,a_max=a_max)
+
+def min_dist_synapses_pre_downstream_clip(
+    row_dict):
+    
+    return feature_clip(
+    row_dict,
+    feature_name="min_dist_synapses_pre_downstream",
+    )
+
+def min_dist_synapses_pre_upstream_clip(
+    row_dict):
+    
+    return feature_clip(
+    row_dict,
+    feature_name="min_dist_synapses_pre_downstream",
+    )
+
+auto_proof_filter_label_map = {
+    "valid":0,
+    "high_degree_branching_split_locations_before_filter":1,
+    "low_degree_branching_split_locations_before_filter":2,
+    "width_jump_up_axon_split_locations_before_filter":3,
+    "axon_on_dendrite_merges_split_locations_before_filter":4,
+    "high_degree_branching_dendrite_split_locations_before_filter":5,
+    "width_jump_up_dendrite_split_locations_before_filter":6,
+    "double_back_dendrite_split_locations_before_filter":7,
+}
+
+def auto_proof_filter_label(row_dict):
+    curr_filt = row_dict["auto_proof_filter"]
+    if curr_filt is None:
+        curr_filt = "valid"
+    return auto_proof_filter_label_map[curr_filt]
+
+def merge_label(row_dict,merge_name):
+    curr_filt = row_dict["auto_proof_filter"]
+    if curr_filt is None:
+        curr_filt = "valid" 
+    return merge_name in curr_filt
+    #return auto_proof_filter_label_map[curr_filt]
+
+def merge_high_degree_branching_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="high_degree_branching_split")
+
+def merge_low_degree_branching_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="low_degree_branching_split")
+
+def merge_width_jump_up_axon_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="width_jump_up_axon")
+
+def merge_axon_on_dendrite_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="axon_on_dendrite")
+
+def merge_high_degree_branching_dendrite_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="high_degree_branching_dendrite")
+
+def merge_width_jump_up_dendrite_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="width_jump_up_dendrite")
+
+def merge_double_back_dendrite_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="double_back_dendrite")
+
+
+def merge_width_jump_up_dendrite_label(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="width_jump_up_dendrite")
+
+
+
 def add_skeleton_vector_features(
     G,
     use_polar_coords = True,

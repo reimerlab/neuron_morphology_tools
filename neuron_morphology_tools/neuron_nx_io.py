@@ -9,13 +9,16 @@ import time
 def export_GNN_info_dict(
     G,
     features_to_output,
+    axon_dendrite = None,
     remove_starter_branches = True,
+    distance_threshold = 100_000,
     divide_into_limbs = True,
+    
 
     label_name = None,#"axon_label",
     graph_label = None,
-    
-    distance_threshold = 50_000,
+
+    feature_matrix_dtype = "float",
     
     #output file features
     folder = "./",
@@ -23,12 +26,18 @@ def export_GNN_info_dict(
     description = None,
     verbose = False,
     
+    return_filepaths = False,
+    
+    
     
     ):
     """
     To process a neuron object before output
     in dictionary format to be used by a GNN
     """
+    print(f"return_filepaths =- {return_filepaths}")
+    
+    
     st = time.time()
     if label_name is None:
         if verbose:
@@ -54,6 +63,17 @@ def export_GNN_info_dict(
     filepaths = []
 
     # ----------- Does a lot of the preprocessing before outputting----------
+    if axon_dendrite is not None:
+        if verbose:
+            print(f"Filtering for {axon_dendrite}")
+        G = nxu.axon_dendrite_subgraph(
+            G,
+            compartment=axon_dendrite,
+            include_soma = True,
+            verbose = verbose,
+            )
+        
+        
     if remove_starter_branches:
         G_filt = nxu.remove_small_starter_branches(
             G,
@@ -61,6 +81,7 @@ def export_GNN_info_dict(
             maintain_skeleton_connectivity = True)
     else:
         G_filt = G
+        
 
     if distance_threshold is not None:
         G_dist_filt = nxu.nodes_within_distance_upstream_from_soma(
@@ -80,8 +101,6 @@ def export_GNN_info_dict(
                 verbose = verbose,
             )
 
-
-
     # ----------- Dividing up and outputting the files -----------
     if divide_into_limbs:
         limb_graphs_for_axon = nxu.limb_graphs_from_soma_connected_nodes(G_with_feats)
@@ -98,21 +117,25 @@ def export_GNN_info_dict(
             limb_info = xu.adjacency_feature_info(
                 G = G_limb,
                 return_df_for_feature_matrix = False,
-                feature_matrix_dtype = "float",
+                feature_matrix_dtype = feature_matrix_dtype,
 
             )
 
             limb_info["label_name"] = label_name
+            limb_info["graph_label"] = graph_label
 
             curr_filename = f"{filename}_limb_{j}_starting_branch_{most_starting_branch}"
 
             output_path = str((Path(folder)/Path(curr_filename)).absolute())
 
-            ret_filepath = su.compressed_pickle(
-                limb_info,
-                output_path,
-                return_filepath=True,
-                verbose = verbose)
+            if return_filepaths:
+                ret_filepath = su.compressed_pickle(
+                    limb_info,
+                    output_path,
+                    return_filepath=True,
+                    verbose = verbose)
+            else:
+                ret_filepath = limb_info
 
             filepaths.append(ret_filepath)
     else:
@@ -134,21 +157,27 @@ def export_GNN_info_dict(
 
             )
 
-        G_info["label"] = graph_label
+        G_info["label_name"] = label_name
+        G_info["graph_label"] = graph_label
 
         curr_filename = f"{filename}"
         output_path = str((Path(folder)/Path(curr_filename)).absolute())
 
-        ret_filepath = su.compressed_pickle(
-                G_info,
-                output_path,
-                return_filepath=True,
-                verbose = verbose)
+        if return_filepaths:
+            ret_filepath = su.compressed_pickle(
+                    G_info,
+                    output_path,
+                    return_filepath=True,
+                    verbose = verbose)
+        else:
+            ret_filepath = G_info
 
         filepaths.append(ret_filepath)
 
     if verbose:
         print(f"\n\n---Total time = {time.time() - st}")
+        
+        
     return filepaths
     
     
@@ -182,9 +211,13 @@ def G_from_adj_feature_dict(
             print(f"Reading from {filepath}")
         adj_feature_dict = su.decompress_pickle(filepath)
 
-    df = pd.DataFrame(adj_feature_dict["feature_matrix"])
-    df.columns = adj_feature_dict["features"]
-    df["node"] = adj_feature_dict["nodelist"]
+        
+    if "pandas" not in str(type(adj_feature_dict["feature_matrix"])):
+        df = pd.DataFrame(adj_feature_dict["feature_matrix"])
+        df.columns = adj_feature_dict["features"]
+        df["node"] = adj_feature_dict["nodelist"]
+    else:
+        df = adj_feature_dict["feature_matrix"]
     
     G = xu.G_from_adjacency_matrix(
     matrix = adj_feature_dict["adjacency"],
@@ -193,6 +226,295 @@ def G_from_adj_feature_dict(
     )
     
     G = xu.set_node_attributes_from_df(G,df,index_name="node")
+    
+    if verbose:
+        print("label_name,graph_label = ",(adj_feature_dict["label_name"],adj_feature_dict["graph_label"]))
     return G
+
+
+
+# ----------------- exporting different types of graph attributes for GNNs -----------
+def GNN_info_axon_vs_dendrite(
+    G,
+    distance_threshold = 100_000,
+    
+    remove_starter_branches = True,
+    divide_into_limbs = False,
+    label_name = "axon_label",
+    graph_label = None,
+    
+    return_filepaths = False,
+    folder = "./Axon_vs_Dendrite/",
+    description = "ax_vs_dendr",
+    verbose = False,
+    
+    **kwargs
+    ):
+    
+    
+    features_to_output = [
+        "mesh_volume",
+        "n_spines",
+        "total_spine_volume",
+        "n_synapses_post",
+        "n_synapses_pre",
+        #"n_synapse_head",
+        #"parent_skeletal_angle",
+        "skeletal_length",
+        "skeleton_vector_upstream_theta",
+        "skeleton_vector_upstream_phi",
+        "skeleton_vector_downstream_theta",
+        "skeleton_vector_downstream_phi",
+        "width_upstream",
+        "width_no_spine",
+        "width_downstream",
+        "axon_label"
+        ]
+    
+    print(f"return_filepaths =- {return_filepaths}")
+    
+    filepaths = nxio.export_GNN_info_dict(
+            G,
+            features_to_output=features_to_output,
+            remove_starter_branches = remove_starter_branches,
+            divide_into_limbs = divide_into_limbs,
+
+            label_name = label_name,#"axon_label",
+            graph_label = graph_label,
+
+            distance_threshold = distance_threshold,
+
+            #output file features
+            folder = folder,
+            description = description,
+            verbose = verbose,
+        
+            return_filepaths = return_filepaths,
+            **kwargs
+
+            )
+    
+    
+    return filepaths
+    
+    
+def GNN_info_compartment_proof(
+    G,
+    distance_threshold = None,
+    
+    remove_starter_branches = True,
+    divide_into_limbs = False,
+    label_name = ("axon_label","basal_label","apical_label","dendrite_label"),
+    
+    graph_label = None,
+    
+    return_filepaths = False,
+    folder = "./Compartments_Proof/",
+    description = "compartment_proof",
+    verbose = False,
+    
+    **kwargs
+    ):
+    
+    
+    features_to_output = [
+        "mesh_volume",
+        "n_spines",
+        "total_spine_volume",
+        "n_synapses_post",
+        "n_synapses_pre",
+        "n_synapses_head",
+        "n_synapses_neck",
+        #"parent_skeletal_angle",
+        "skeletal_length",
+        "skeleton_vector_upstream_theta",
+        "skeleton_vector_upstream_phi",
+        "skeleton_vector_downstream_theta",
+        "skeleton_vector_downstream_phi",
+        "width_upstream",
+        "width_no_spine",
+        "width_downstream",
+        "axon_label",
+        "dendrite_label",
+        "basal_label",
+        "apical_label",
+        ]
+    
+    filepaths = nxio.export_GNN_info_dict(
+    G,
+    features_to_output=features_to_output,
+    remove_starter_branches = remove_starter_branches,
+    divide_into_limbs = divide_into_limbs,
+
+    label_name = label_name,#"axon_label",
+    graph_label = graph_label,
+    
+    distance_threshold = distance_threshold,
+    
+    #output file features
+    folder = folder,
+    description = description,
+    verbose = verbose,
+        
+    return_filepaths = return_filepaths,
+    
+    )
+    
+    return filepaths
+
+
+def GNN_info_merge_errors(
+    G,
+    distance_threshold = None,
+
+    remove_starter_branches = True,
+    divide_into_limbs = False,
+    #label_name = "auto_proof_filter_label",
+    label_name = ("merge_high_degree_branching_label",
+        "merge_low_degree_branching_label",
+        "merge_width_jump_up_axon_label",
+        "merge_axon_on_dendrite_label",
+        "merge_high_degree_branching_dendrite_label",
+        "merge_width_jump_up_dendrite_label",
+        "merge_double_back_dendrite_label",),
+    graph_label = None,
+
+    axon_dendrite = None,
+    
+    return_filepaths = False,
+    folder = "./Merge_Errors/",
+    description = "merge_errors",
+    
+    
+    verbose = False,
+    
+    **kwargs
+    ):
+    
+    features_to_output = [
+        "mesh_volume",
+        "n_spines",
+        "total_spine_volume",
+        "n_synapses_post",
+        "n_synapses_pre",
+        "n_synapses_head",
+        "n_synapses_neck",
+        #"parent_skeletal_angle",
+        "skeletal_length",
+        "skeleton_vector_upstream_theta",
+        "skeleton_vector_upstream_phi",
+        "skeleton_vector_downstream_theta",
+        "skeleton_vector_downstream_phi",
+        "width_upstream",
+        "width_no_spine",
+        "width_downstream",
+        "min_dist_synapses_pre_downstream_clip",
+        "min_dist_synapses_pre_upstream_clip",
+        
+    ]
+    
+    if type(label_name) == str:
+        features_to_output.append(label_name)
+    else:
+        features_to_output += label_name
+        # -------- labels ------------
+#         "merge_high_degree_branching_label",
+#         "merge_low_degree_branching_label",
+#         "merge_width_jump_up_axon_label",
+#         "merge_axon_on_dendrite_label",
+#         "merge_high_degree_branching_dendrite_label",
+#         "merge_width_jump_up_dendrite_label",
+#         "merge_double_back_dendrite_label",
+        
+#         ]
+    
+    filepaths = nxio.export_GNN_info_dict(
+        G,
+        features_to_output=features_to_output,
+        remove_starter_branches = remove_starter_branches,
+        divide_into_limbs = divide_into_limbs,
+
+        label_name = label_name,#"axon_label",
+        graph_label = graph_label,
+
+        distance_threshold = distance_threshold,
+
+        #output file features
+        folder = folder,
+        description = description,
+        verbose = verbose,
+
+        axon_dendrite = axon_dendrite,
+        return_filepaths = return_filepaths
+        )
+    
+    return filepaths
+
+
+def GNN_info_cell_type_fine(
+    G,
+    distance_threshold = None,
+
+    remove_starter_branches = True,
+    divide_into_limbs = False,
+    label_name = None,
+    graph_label = None,
+
+    axon_dendrite = None,
+    
+    return_filepaths = False,
+    folder = "./Cell_Type_Fine/",
+    description = "cell_type_fine",
+    
+    
+    verbose = False,
+    
+    **kwargs
+    ):
+    
+    features_to_output = [
+        "mesh_volume",
+        "n_spines",
+        "total_spine_volume",
+        "n_synapses_post",
+        "n_synapses_pre",
+        "n_synapses_head",
+        "n_synapses_neck",
+        #"parent_skeletal_angle",
+        "skeletal_length",
+        "skeleton_vector_upstream_theta",
+        "skeleton_vector_upstream_phi",
+        "skeleton_vector_downstream_theta",
+        "skeleton_vector_downstream_phi",
+        "width_upstream",
+        "width_no_spine",
+        "width_downstream",
+        "axon_label",
+        "dendrite_label",
+        "basal_label",
+        "apical_label"
+        ]
+    
+    filepaths = nxio.export_GNN_info_dict(
+        G,
+        features_to_output=features_to_output,
+        remove_starter_branches = remove_starter_branches,
+        divide_into_limbs = divide_into_limbs,
+
+        label_name = label_name,#"axon_label",
+        graph_label = graph_label,
+
+        distance_threshold = distance_threshold,
+
+        #output file features
+        folder = folder,
+        description = description,
+        verbose = verbose,
+
+        axon_dendrite = axon_dendrite,
+        return_filepaths = return_filepaths
+        )
+    
+    return filepaths
 
 import neuron_nx_io as nxio

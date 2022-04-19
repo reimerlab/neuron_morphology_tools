@@ -157,7 +157,7 @@ import numpy as np
 from scipy.stats import wasserstein_distance
 from itertools import combinations,permutations
 import seaborn as sns
-
+import pandas_utils as pu
 
 def morphometrics(
     N=None,
@@ -443,7 +443,9 @@ def morphometrics(
     morphometry_data = pd.DataFrame(z)
     
     if stats_to_remove is not None:
-        morphometry_data = morphometry_data[list(stats_to_remove)]
+        morphometry_data = pu.delete_columns(
+            morphometry_data,
+            list(stats_to_remove))
     
     return morphometry_data
 

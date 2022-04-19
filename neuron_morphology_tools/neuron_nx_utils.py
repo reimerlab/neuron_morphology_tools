@@ -20,6 +20,7 @@ dynamic_attributes_default = (
   'skeleton_data')
 import copy
 
+
 def delete_attributes(
     G,
     inplace = True,
@@ -350,6 +351,21 @@ def soma_radius(
     
 # --------------- For exporting graph as differnt file types -------------
 import networkx as nx
+
+compartment_index_swc_map = dict(
+        dendrite = 0,
+        soma = 1,
+        axon = 2,
+        basal = 3,
+        apical = 4,
+        apical_tuft = 4,
+        oblique = 4,
+        apical_shaft = 4,
+        custom = 5,
+        undefined = 6,
+        glia = 7
+    )
+
 def export_swc_dicts(
     G,
     use_skeletal_coordinates = True,
@@ -376,20 +392,6 @@ def export_swc_dicts(
     """
 
     index = 0
-
-    compartment_index_map = dict(
-        dendrite = 0,
-        soma = 1,
-        axon = 2,
-        basal = 3,
-        apical = 4,
-        apical_tuft = 4,
-        oblique = 4,
-        apical_shaft = 4,
-        custom = 5,
-        undefined = 6,
-        glia = 7
-    )
 
     center_point = G.nodes[soma_node_name]["mesh_center"]
 
@@ -439,7 +441,7 @@ def export_swc_dicts(
 
             curr_dict = {
                 "n":index,
-                "type":compartment_index_map[curr_compartment],
+                "type":compartment_index_swc_map[curr_compartment],
                 "x": coord[0]/coordinate_divisor,
                 "y":coord[1]/coordinate_divisor,
                 "z":coord[2]/coordinate_divisor,
@@ -528,12 +530,13 @@ def axon_dendrite_nodes(
     
 def axon_nodes(
     G,
-    return_node_df=False):
+    return_node_df=False,
+    **kwargs):
     
     return nxu.axon_dendrite_nodes(
     G,
     compartment="axon",
-    return_node_df=return_node_df,)
+    return_node_df=return_node_df,**kwargs)
 
 def dendrite_nodes(
     G,
@@ -543,6 +546,50 @@ def dendrite_nodes(
     G,
     compartment="dendrite",
     return_node_df=return_node_df,)
+
+def axon_dendrite_subgraph(
+    G,
+    compartment,
+    include_soma = True,
+    verbose = False,
+    ):
+    
+    compartment_nodes =  list(axon_dendrite_nodes(
+    G,
+    compartment=compartment,
+    return_node_df=False,))
+    
+    if verbose:
+        print(f"compartment_nodes = {compartment_nodes}")
+        
+    if include_soma:
+        compartment_nodes.append(nxu.soma_node_name_global)
+        
+    return G.subgraph(compartment_nodes)
+        
+def axon_subgraph(
+    G,
+    include_soma = True,
+    verbose = False,
+    ):
+    return nxu.axon_dendrite_subgraph(
+    G,
+    compartment="axon",
+    include_soma = include_soma,
+    verbose = verbose,
+    )
+
+def dendrite_subgraph(
+    G,
+    include_soma = True,
+    verbose = False,
+    ):
+    return nxu.axon_dendrite_subgraph(
+    G,
+    compartment="dendrite",
+    include_soma = include_soma,
+    verbose = verbose,
+    )
 
 import time
 def plot(
@@ -575,7 +622,7 @@ def limb_branch_nodes(G):
     return [k for k in G.nodes() if "S" not in k]
 
 def limb_branch_subgraph(G):
-    return G.subgraph(nxu.limb_branch_nodes(G))
+    return G.subgraph(nxu.limb_branch_nodes(G)).copy()
 
 def all_limb_idxs_in_G(G):
     return np.sort(np.unique([nxu.limb_from_node_name(k)
@@ -953,6 +1000,7 @@ def set_auto_proof_filter_attribute(
     default_value = None,
     verbose = False,
     error_on_non_unique_node_names=True,
+    filter_axon_on_dendrite_splits = True,
     **kwargs
     ):
     """
@@ -997,7 +1045,15 @@ def set_auto_proof_filter_attribute(
         nxu.nodes_with_auto_proof_filter(
             G,
             verbose = True)
+        
+    if filter_axon_on_dendrite_splits:
+        if verbose:
+            print(f"filtering the axon on dendrite splits")
+        G = nxu.filter_axon_on_dendrite_splits_to_most_upstream(G)
 
+    return G
+
+def filter_axon_on_dendrite_splits_to_most_upstream(G):
     return G
 
 def segment_id_from_G(G,return_split_index = True):
@@ -1240,6 +1296,8 @@ def nodes_distance_query_from_soma(
     """
     dist_df = getattr(nxu,f"distance_{distance_type}_from_soma_df")(G,nodes=nodes)
     
+    
+    
     if within_distance:
         query = f"soma_distance <= {distance_threshold}"
         query_descriptor = "closer"
@@ -1257,7 +1315,10 @@ def nodes_distance_query_from_soma(
     if return_subgraph:
         if return_soma_with_sugraph:
             filt_nodes += [nxu.soma_node_name_global]
-        return G.subgraph(filt_nodes)
+            
+       
+        G_sub = G.subgraph(filt_nodes).copy()
+        return G_sub
     else:
         return filt_nodes
 
@@ -1276,7 +1337,7 @@ def nodes_within_distance_from_soma(
     curr_nodes = nxu.nodes_within_distance_from_soma(G,distance_threshold = distance_threshold,verbose = True)
     """
     
-    return nxu.nodes_distance_query_from_soma(
+    return_G =  nxu.nodes_distance_query_from_soma(
     G,
     distance_threshold,
     within_distance = True,
@@ -1285,6 +1346,9 @@ def nodes_within_distance_from_soma(
     return_subgraph=return_subgraph,
     verbose = verbose,
     )
+    
+    
+    return return_G
     
 def nodes_farther_than_distance_from_soma(
     G,
@@ -1326,6 +1390,7 @@ def nodes_within_distance_upstream_from_soma(
 import numpy as np
 def soma_filter_by_complete_graph(
     G,
+    inplace = False,
     verbose = False,
     plot = False):
     """
@@ -1343,13 +1408,14 @@ def soma_filter_by_complete_graph(
     G_no_soma = nxu.soma_filter_by_complete_graph(G_filt,plot=True)
     nxu.draw_tree(G_no_soma)
     """
-
+    if not inplace:
+        G = copy.deepcopy(G)
 
     soma_conn_nodes = nxu.soma_connected_nodes(G)
     if verbose:
         print(f"soma_conn_nodes ({len(soma_conn_nodes)})= {soma_conn_nodes}")
 
-    all_conn = np.concatenate([[(k,v) for v in soma_conn_nodes] for k in soma_conn_nodes])
+    all_conn = np.concatenate([[(k,v) for v in soma_conn_nodes if v != k] for k in soma_conn_nodes])
 
     if verbose:
         print(f"New connections ({len(all_conn)}) = {all_conn}")
@@ -1361,5 +1427,89 @@ def soma_filter_by_complete_graph(
         nx.draw(nx.Graph(return_G),with_labels = True)
         
     return return_G
+
+
+def nodes_with_auto_proof_filter_type(
+    G,
+    filter_type,
+    filter_feature = "auto_proof_filter",
+    verbose = False,
+    ):
+    """
+    Purpose: To get all nodes with a certain filter marking 
+    
+    Ex: 
+    nxu.nodes_with_auto_proof_filter_type(G,filter_type="axon_on_dendrite",verbose = True)
+    """
+    filter_df = xu.node_df(G).query(f"{filter_feature} == {filter_feature}")
+    nodes_with_filter_type = filter_df[filter_df[filter_feature].str.contains(filter_type)][xu.upstream_name].to_numpy()
+    if verbose:
+        print(f"nodes with {filter_type} = {nodes_with_filter_type}")
+        
+    return nodes_with_filter_type
+
+def clear_nodes_auto_proof_filter_feature(
+    G,
+    nodes,
+    filter_feature = "auto_proof_filter",
+    verbose=False,
+    ):
+    for n in nodes:
+        curr_filter_name = G.nodes[n][filter_feature]
+        if verbose:
+            print(f"Clearning {curr_filter_name} for node {n} ")
+        G.nodes[n][filter_feature] = None
+    return G
+
+def filter_axon_on_dendrite_splits_to_most_upstream(
+    G,
+    verbose=False,
+    inplace = False,
+    filter_out_only_if_parent_in_split = False,
+    **kwargs):
+    """
+    Purpose: To reduce the axon on dendrite merges to only those
+    that are the most upstream of the group
+    
+    Pseudocode:
+    1) Get all of the nodes that are in axon on dendrite mergers
+    2) For each node:
+    a. Get either just the parent or all of the upstream node
+    b. add node to list ot be cleared if has upstream axon on dendrite
+    
+    Ex: 
+    G_filt = filter_axon_on_dendrite_splits_to_most_upstream(G,verbose = True)
+    nxu.nodes_with_auto_proof_filter(G_filt,"axon_on_dendrite")
+    
+    """
+    axon_on_dendrite_nodes = nxu.nodes_with_auto_proof_filter_type(G,"axon_on_dendrite")
+    
+    if not inplace:
+        G = copy.deepcopy(G)
+    
+    if verbose:
+        print(f"axon_on_dendrite_nodes ({len(axon_on_dendrite_nodes)}) = {axon_on_dendrite_nodes}")
+        
+    nodes_to_clear = []
+    for n in axon_on_dendrite_nodes:
+        if filter_out_only_if_parent_in_split:
+            up_nodes = [xu.upstream_node(G,n)]
+        else:
+            up_nodes = xu.all_upstream_nodes(G,n)
+            
+        ax_on_dendr_upstream = np.intersect1d(axon_on_dendrite_nodes,up_nodes)
+        if len(ax_on_dendr_upstream) > 0:
+            if verbose:
+                print(f"Removing node {n} because had upstream axon on dendrite: {ax_on_dendr_upstream}")
+            nodes_to_clear.append(n)
+            
+    G = nxu.clear_nodes_auto_proof_filter_feature(G,nodes_to_clear,verbose = verbose)
+        
+    
+    if verbose:
+        axon_on_dendrite_nodes = nxu.nodes_with_auto_proof_filter_type(G,"axon_on_dendrite")
+        print(f"axon_on_dendrite_nodes AFTER FILTERING ({len(axon_on_dendrite_nodes)}) = {axon_on_dendrite_nodes}")
+        
+    return G
     
 import neuron_nx_utils as nxu
