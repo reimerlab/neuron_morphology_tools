@@ -209,8 +209,13 @@ def feature_df_from_gnn_info(
                 label_name = list(nu.convert_to_array_like(label_name))
             y = df[list(label_name)].to_numpy()
             x = pu.delete_columns(df,label_name)
+            
+            if y.ndim > 1: #have to convert it back from one hot encoding
+                y = np.argmax(y,axis = 1)
         else:
             y = None
+            
+        
 
         return x.to_numpy(),y
     else:
