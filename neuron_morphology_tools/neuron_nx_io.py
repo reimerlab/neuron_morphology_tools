@@ -195,7 +195,10 @@ import pandas_utils as pu
 def feature_df_from_gnn_info(
     gnn_info,
     return_data_labels_split = True,
-    inf_fill_value = 10000):
+    inf_fill_value = 10000,
+    add_negative_label = False,):
+    
+    
     df = pd.DataFrame(gnn_info["feature_matrix"])
     df.columns = gnn_info["features"]
 
@@ -211,6 +214,10 @@ def feature_df_from_gnn_info(
             x = pu.delete_columns(df,label_name)
             
             if y.ndim > 1: #have to convert it back from one hot encoding
+                if add_negative_label:
+                    #print(f"Adding negative label")
+                    new_col = np.zeros((y.shape[0],1))
+                    y = np.hstack([new_col,y])
                 y = np.argmax(y,axis = 1)
         else:
             y = None
@@ -410,7 +417,7 @@ def GNN_info_merge_errors(
     remove_starter_branches = True,
     divide_into_limbs = False,
     #label_name = "auto_proof_filter_label",
-    label_name = ("merge_high_degree_branching_label",
+    label_name = ("merge_clean","merge_high_degree_branching_label",
         "merge_low_degree_branching_label",
         "merge_width_jump_up_axon_label",
         "merge_axon_on_dendrite_label",
@@ -457,16 +464,7 @@ def GNN_info_merge_errors(
         features_to_output.append(label_name)
     else:
         features_to_output += label_name
-        # -------- labels ------------
-#         "merge_high_degree_branching_label",
-#         "merge_low_degree_branching_label",
-#         "merge_width_jump_up_axon_label",
-#         "merge_axon_on_dendrite_label",
-#         "merge_high_degree_branching_dendrite_label",
-#         "merge_width_jump_up_dendrite_label",
-#         "merge_double_back_dendrite_label",
-        
-#         ]
+
     
     filepaths = nxio.export_GNN_info_dict(
         G,

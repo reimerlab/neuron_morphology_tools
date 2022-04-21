@@ -191,10 +191,16 @@ def auto_proof_filter_label(row_dict):
 def merge_label(row_dict,merge_name):
     curr_filt = row_dict["auto_proof_filter"]
     if curr_filt is None:
-        curr_filt = "valid" 
+        curr_filt = "clean" 
     return merge_name in curr_filt
     #return auto_proof_filter_label_map[curr_filt]
 
+def merge_clean(row_dict):
+    return merge_label(
+        row_dict,
+        merge_name="clean")
+
+    
 def merge_high_degree_branching_label(row_dict):
     return merge_label(
         row_dict,
