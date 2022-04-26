@@ -565,7 +565,7 @@ def axon_dendrite_subgraph(
     if include_soma:
         compartment_nodes.append(nxu.soma_node_name_global)
         
-    return G.subgraph(compartment_nodes)
+    return G.subgraph(compartment_nodes).copy()
         
 def axon_subgraph(
     G,
@@ -677,7 +677,7 @@ def limb_graph(
     if verbose:
         print(f"subgraph_nodes after restriction: {subgraph_nodes}")
         
-    return G.subgraph(subgraph_nodes)
+    return G.subgraph(subgraph_nodes).copy()
 
 
 def node_match_by_dict(
@@ -896,7 +896,7 @@ def split_location_node_map_df(
             verbose = verbose )
 
     if nodelist is not None: 
-        G_search = G.subgraph(nodelist)
+        G_search = G.subgraph(nodelist).copy()
     else:
         G_search = G
 
@@ -1290,6 +1290,8 @@ def nodes_distance_query_from_soma(
     return_subgraph=False,
     return_soma_with_sugraph = True,
     verbose = False,
+    maintain_skeleton_connectivity = True,
+    **kwargs
     ):
     """
     Purpose: Find all the nodes within
@@ -1315,11 +1317,26 @@ def nodes_distance_query_from_soma(
         
         
     if return_subgraph:
+        
         if return_soma_with_sugraph:
             filt_nodes += [nxu.soma_node_name_global]
             
+        # Old way:
+        #G_sub = G.subgraph(filt_nodes).copy()
+        
+        node_to_delete = np.setdiff1d(list(G.nodes()),filt_nodes)
+        if len(node_to_delete) > 0:
+            G_sub = nxu.remove_node(
+            G,
+            node_to_delete,
+            verbose= False,
+            inplace = False,
+            maintain_skeleton_connectivity=maintain_skeleton_connectivity,
+            **kwargs)
+        else:
+            G_sub = G
        
-        G_sub = G.subgraph(filt_nodes).copy()
+        
         return G_sub
     else:
         return filt_nodes
@@ -1394,7 +1411,7 @@ def soma_filter_by_complete_graph(
     G,
     inplace = False,
     verbose = False,
-    connect_previousl_touching_soma_nodes = False,
+    connect_previous_touching_soma_nodes = False,
     plot = False):
     """
     Problem: Want to resolve the soma so it does
@@ -1414,7 +1431,7 @@ def soma_filter_by_complete_graph(
     if not inplace:
         G = copy.deepcopy(G)
     
-    if connect_previousl_touching_soma_nodes:
+    if connect_previous_touching_soma_nodes:
         soma_conn_nodes = nxu.soma_connected_nodes(G)
         if verbose:
             print(f"soma_conn_nodes ({len(soma_conn_nodes)})= {soma_conn_nodes}")

@@ -13,6 +13,7 @@ def export_GNN_info_dict(
     axon_dendrite = None,
     remove_starter_branches = True,
     distance_threshold = 100_000,
+    distance_threshold_min = None,
     divide_into_limbs = True,
     
 
@@ -28,7 +29,7 @@ def export_GNN_info_dict(
     verbose = False,
     
     return_filepaths = False,
-    
+    return_G_before_output = False,
     
     
     ):
@@ -93,6 +94,16 @@ def export_GNN_info_dict(
         )
     else:
         G_dist_filt = G_filt
+        
+    if distance_threshold_min is not None:
+        G_dist_filt = nxu.nodes_farther_than_distance_from_soma(
+            G_dist_filt,
+            verbose = verbose,
+            distance_threshold = distance_threshold_min,
+            return_subgraph = True,
+            distance_type = "downstream",
+        )
+        
 
 
     G_with_feats = nxf.filter_G_features(
@@ -102,9 +113,19 @@ def export_GNN_info_dict(
                 verbose = verbose,
             )
 
+    if return_G_before_output:
+        if divide_into_limbs:
+            G_with_feats = nxu.limb_graphs_from_soma_connected_nodes(G_with_feats)
+        return G_with_feats
     # ----------- Dividing up and outputting the files -----------
     if divide_into_limbs:
+#         print(f"G_with_feats.nodes() = {G_with_feats.nodes()}")
+#         import matplotlib.pyplot as plt
+#         import networkx as nx
+#         nx.draw(G_with_feats,with_labels = True)
+#         plt.show()
         limb_graphs_for_axon = nxu.limb_graphs_from_soma_connected_nodes(G_with_feats)
+        #print(f"len(limb_graphs_for_axon) = {len(limb_graphs_for_axon)}")
         for j,G_limb in enumerate(limb_graphs_for_axon):
             if verbose:
                 print(f"Outputing limb {j}---")
@@ -284,6 +305,7 @@ def G_from_adj_feature_dict(
 def GNN_info_axon_vs_dendrite(
     G,
     distance_threshold = 100_000,
+    distance_threshold_min = None,
     
     remove_starter_branches = True,
     divide_into_limbs = False,
@@ -330,6 +352,7 @@ def GNN_info_axon_vs_dendrite(
             graph_label = graph_label,
 
             distance_threshold = distance_threshold,
+            distance_threshold_min = distance_threshold_min,
 
             #output file features
             folder = folder,
@@ -348,6 +371,7 @@ def GNN_info_axon_vs_dendrite(
 def GNN_info_compartment_proof(
     G,
     distance_threshold = None,
+    distance_threshold_min = None,
     
     remove_starter_branches = True,
     divide_into_limbs = False,
@@ -397,6 +421,7 @@ def GNN_info_compartment_proof(
     graph_label = graph_label,
     
     distance_threshold = distance_threshold,
+    distance_threshold_min=distance_threshold_min,
     
     #output file features
     folder = folder,
@@ -413,7 +438,7 @@ def GNN_info_compartment_proof(
 def GNN_info_merge_errors(
     G,
     distance_threshold = None,
-
+    distance_threshold_min = None,
     remove_starter_branches = True,
     divide_into_limbs = False,
     #label_name = "auto_proof_filter_label",
@@ -476,6 +501,7 @@ def GNN_info_merge_errors(
         graph_label = graph_label,
 
         distance_threshold = distance_threshold,
+        distance_threshold_min=distance_threshold_min,
 
         #output file features
         folder = folder,
@@ -492,13 +518,14 @@ def GNN_info_merge_errors(
 def GNN_info_cell_type_fine(
     G,
     distance_threshold = None,
+    distance_threshold_min=None,
 
     remove_starter_branches = True,
     divide_into_limbs = False,
     label_name = None,
     graph_label = None,
 
-    axon_dendrite = None,
+    axon_dendrite = "dendrite",
     
     return_filepaths = False,
     folder = "./Cell_Type_Fine/",
@@ -527,7 +554,7 @@ def GNN_info_cell_type_fine(
         "width_upstream",
         "width_no_spine",
         "width_downstream",
-        "axon_label",
+        #"axon_label",
         #"dendrite_label",
         "basal_label",
         "apical_label"
@@ -543,6 +570,7 @@ def GNN_info_cell_type_fine(
         graph_label = graph_label,
 
         distance_threshold = distance_threshold,
+        distance_threshold_min=distance_threshold_min,
 
         #output file features
         folder = folder,
@@ -550,7 +578,8 @@ def GNN_info_cell_type_fine(
         verbose = verbose,
 
         axon_dendrite = axon_dendrite,
-        return_filepaths = return_filepaths
+        return_filepaths = return_filepaths,
+        **kwargs
         )
     
     return filepaths
