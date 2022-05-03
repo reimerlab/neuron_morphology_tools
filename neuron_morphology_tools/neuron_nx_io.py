@@ -105,14 +105,16 @@ def export_GNN_info_dict(
         )
         
 
-
-    G_with_feats = nxf.filter_G_features(
-                G_dist_filt,
-                features=features_to_output,
-                inplace = False,
-                verbose = verbose,
-            )
-
+    if len(nxu.limb_branch_subgraph(G_dist_filt).nodes()) > 0:
+        G_with_feats = nxf.filter_G_features(
+                    G_dist_filt,
+                    features=features_to_output,
+                    inplace = False,
+                    verbose = verbose,
+                )
+    else:
+        G_with_feats = G_dist_filt
+    
     if return_G_before_output:
         if divide_into_limbs:
             G_with_feats = nxu.limb_graphs_from_soma_connected_nodes(G_with_feats)
@@ -173,30 +175,31 @@ def export_GNN_info_dict(
         G_no_soma = nxu.soma_filter_by_complete_graph(G_with_feats,plot=False)
         G_no_soma = nx.Graph(G_no_soma)
 
-        G_info = xu.adjacency_feature_info(
-                G = G_no_soma,
-                return_df_for_feature_matrix = False,
-                feature_matrix_dtype = "float",
-                dense_adjacency=True
+        if len(G_no_soma.nodes()) > 0:
+            G_info = xu.adjacency_feature_info(
+                    G = G_no_soma,
+                    return_df_for_feature_matrix = False,
+                    feature_matrix_dtype = "float",
+                    dense_adjacency=True
 
-            )
+                )
 
-        G_info["label_name"] = label_name
-        G_info["graph_label"] = graph_label
+            G_info["label_name"] = label_name
+            G_info["graph_label"] = graph_label
 
-        curr_filename = f"{filename}"
-        output_path = str((Path(folder)/Path(curr_filename)).absolute())
+            curr_filename = f"{filename}"
+            output_path = str((Path(folder)/Path(curr_filename)).absolute())
 
-        if return_filepaths:
-            ret_filepath = su.compressed_pickle(
-                    G_info,
-                    output_path,
-                    return_filepath=True,
-                    verbose = verbose)
-        else:
-            ret_filepath = G_info
+            if return_filepaths:
+                ret_filepath = su.compressed_pickle(
+                        G_info,
+                        output_path,
+                        return_filepath=True,
+                        verbose = verbose)
+            else:
+                ret_filepath = G_info
 
-        filepaths.append(ret_filepath)
+            filepaths.append(ret_filepath)
 
     if verbose:
         print(f"\n\n---Total time = {time.time() - st}")
