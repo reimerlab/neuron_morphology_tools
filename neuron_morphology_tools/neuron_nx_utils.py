@@ -422,6 +422,9 @@ def export_swc_dicts(
         curr_compartment  = G.nodes[n]["compartment"]
         if curr_compartment is None:
             curr_compartment = default_compartment
+            
+#         if curr_compartment == "dendrite":
+#             curr_compartment = default_compartment
 
         if center_on_soma:
             skeleton_pts = skeleton_pts - center_point
@@ -504,12 +507,24 @@ def swc_df(G,flip_z = True,**kwargs):
 def morphometrics(
     G=None,
     swc = None,
+    apply_basal_dendrite_swap = True,
     **kwargs
     ):
     
     if swc is None:
         swc = nxu.swc_df(G)
-    
+        
+    if apply_basal_dendrite_swap:
+        # --- fixed so dendrite compartment will be changed to basal and recognized as dendrite ---
+        import pandas_utils as pu
+        def basal_rename(row):
+            if row["type"] == compartment_index_swc_map["dendrite"]:
+                return compartment_index_swc_map["basal"]
+            else:
+                return row["type"]
+
+        swc["type"] = pu.new_column_from_row_function(swc,basal_rename).astype('int')
+        #return swc
     
     #swc_df = mpu.swc_rotated_resampled(swc,resample=False,flip_z = True)
         
