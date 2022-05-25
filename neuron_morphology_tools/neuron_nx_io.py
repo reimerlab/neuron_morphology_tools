@@ -587,4 +587,7 @@ def GNN_info_cell_type_fine(
     
     return filepaths
 
+
+def export_skeleton()
+
 import neuron_nx_io as nxio
