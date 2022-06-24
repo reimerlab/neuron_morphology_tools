@@ -821,6 +821,18 @@ def nodes_without_match(
         
     return no_map
 
+def skeleton_from_node(
+    G,
+    n):
+    """
+    Ex: nxu.skeleton_from_node(G_obj,n = "L0_16")
+    """
+    skeleton_points = G.nodes[n]["skeleton_data"]
+    sk_idx = np.vstack([
+        np.arange(0,len(skeleton_points)-1),
+        np.arange(1,len(skeleton_points))]).T
+    return skeleton_points[sk_idx]
+    
 import numpy_utils as nu
 def skeleton_coordinates_from_G(
     G,
@@ -1549,4 +1561,41 @@ def filter_axon_on_dendrite_splits_to_most_upstream(
         
     return G
     
+    
+import numpy as np
+def fix_flipped_skeletons(
+    G,
+    verbose = False,):
+    """
+    Purpose: To fix the skeleton data
+    in Graph objects if they are
+    not aligned correctly
+    
+    Ex: 
+    segment_id,split_index = 864691135162621741,0
+
+    G_obj = hdju.graph_obj_from_auto_proof_stage(
+        segment_id=segment_id,
+        split_index=split_index,
+    )
+    
+    G_obj = fix_flipped_skeletons(G_obj,verbose = True)
+    """
+    
+    node_flipped = []
+    for n in G.nodes():
+        if "s" in n.lower():
+            continue
+        curr_dict = G.nodes[n]
+        endpt_up = curr_dict["endpoint_upstream"]
+        sk_up = curr_dict["skeleton_data"][0]
+        if not np.array_equal(endpt_up,sk_up):
+            G.nodes[n]["skeleton_data"] = np.flip(curr_dict["skeleton_data"],axis=0)
+            node_flipped.append(n)
+            
+    if verbose:
+        print(f"Nodes with skeleton flipped: {node_flipped}")
+        
+    return G
+
 import neuron_nx_utils as nxu
