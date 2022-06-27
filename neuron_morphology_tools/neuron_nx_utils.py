@@ -1641,6 +1641,8 @@ def attribute_graph_from_graph_obj(
     attribute,
     ids_name = None,
     verbose = False,
+    return_attribute_nodes = False,
+    return_attribute_nodes_to_branch_dict = True,
     ):
     """
     Purpose: To convert a graph object into 
@@ -1660,8 +1662,10 @@ def attribute_graph_from_graph_obj(
             ids_name = f"{attribute}_id"
 
     graph_edges = []
+    graph_weights = []
     ids_counter = 0
-
+    attribute_ids = []
+    attribute_ids_branch_dict = dict()
     nodes = list(G.nodes())
 
     for n in nodes:
@@ -1683,6 +1687,10 @@ def attribute_graph_from_graph_obj(
         if None in ids_data:
             ids_data = np.arange(ids_counter,ids_counter + len(attribute_data)).astype('int')
             ids_counter += len(attribute_data)
+            
+        
+        attribute_ids.append(ids_data)
+        attribute_ids_branch_dict.update({str(k):n for k in ids_data})
 
         order_idx = np.argsort(upstream_data)
         upstream_data_sort = upstream_data[order_idx]
@@ -1692,26 +1700,264 @@ def attribute_graph_from_graph_obj(
         ids_data_sort = np.hstack([[upstream_node],ids_data_sort,[n]])
 
         edge_weights = upstream_data_sort[1:] - upstream_data_sort[:-1]
-        edges = np.vstack([ids_data_sort[:-1],ids_data_sort[1:]])
-        weighted_edges = np.vstack([edges,edge_weights]).T
+        edge_weights[edge_weights <= 0] = 0
+        edges = np.vstack([ids_data_sort[:-1],ids_data_sort[1:]]).T
+        #weighted_edges = np.vstack([edges,edge_weights]).T
 
         if verbose:
-            print(f" --> node {n}: # of edges = {len(weighted_edges)}")
+            print(f" --> node {n}: # of edges = {len(edges)}")
             #print(f"weighted_edges = {weighted_edges}")
 
-        graph_edges.append(weighted_edges)
+        graph_edges.append(edges)
+        graph_weights.append(edge_weights)
 
 
     output_G = nx.Graph()
 
     if len(graph_edges) > 0:
         graph_edges = np.vstack(graph_edges)
-        output_G.add_weighted_edges_from(graph_edges)
+        graph_weights = np.hstack(graph_weights)
+        output_G = xu.edges_and_weights_to_graph(graph_edges,
+                              weights_list=graph_weights)
+        
+    if len(attribute_ids) > 0:
+        attribute_ids = np.hstack(attribute_ids)
+        
+    attribute_ids = np.array(attribute_ids).astype('int').astype("str")
         
     if verbose:
         print(f"Total Graph stats:")
         xu.print_node_edges_counts(output_G)
 
-    return output_G
+    if (not return_attribute_nodes) and (not return_attribute_nodes_to_branch_dict):
+        return output_G
+    return_value =[output_G]
+    
+    if return_attribute_nodes:
+        return_value.append(attribute_ids)
+    if return_attribute_nodes_to_branch_dict:
+        return_value.append(attribute_ids_branch_dict)
+    
+    return return_value
+    
+    
+import matplotlib.pyplot as plt
+def plot_inter_attribute_intervals(
+    inter_attribute_info,
+    title = None,
+    bins=50,
+    attribute = "attribute",
+    verbose = False):
+    """
+    Purpose: To plot the histograms of the
+    closest attribute arrays
+    """
+    if type(inter_attribute_info) != dict:
+        inter_attribute_info = {1:inter_attribute_info}
+        
+    if type(inter_attribute_info[1]) == dict:
+        if verbose:
+            print(f"Combining the branch specific dicts")
+        inter_attribute_info = {k:np.concatenate(list(v.values())) for k,v in inter_attribute_info.items()}
+        
+    fig,ax = plt.subplots(1,1,)
+    for i in range(len(inter_attribute_info)):
+        ax.hist(
+            np.array(inter_attribute_info[i+1])/1000,
+            label=f"{i+1} Hop",
+            alpha = 0.5,
+            bins = bins)
+
+        if title is None:
+            title = f"Closest {attribute}"
+        ax.set_title(title)
+        ax.set_xlabel(f"Distance (um)")
+        ax.set_ylabel(f"Count")
+        ax.legend()
+        
+    return ax
+
+import networkx_utils as xu
+import time
+from tqdm_utils import tqdm
+def inter_attribute_intervals_from_G(
+    G,
+    attribute,
+    n_closest_neighbors = 1,
+    default_value = -1,
+    debug_time = False,
+    plot = False,
+    verbose = False,
+    separate_branches = True,
+    ):
+    """
+    Purpose: To find the k inter-attribute
+    distances for the attributes on the graph
+
+    1) Turn the graph into an attribute graph
+    2) For every attribute id:
+        Remove the attribute id from the total list
+        a. For 1 to k (the number of attributes away):
+           if list empty then add distance of -1 and continue
+           Calculate the closest neighbors from remaining nodes and get distance
+
+           Save the distance
+           Remove that closest neighbor from the list
+
+    3) Return the lists of closest distances
+    """
+
+    G_disc,att_nodes,att_to_branch_dict = nxu.attribute_graph_from_graph_obj(
+        G,
+        attribute = attribute,
+        verbose = verbose,
+        return_attribute_nodes = True,
+        return_attribute_nodes_to_branch_dict = True,
+    )
+
+
+    if not separate_branches:
+        closest_neighbors = {k:[] for k in range(1,n_closest_neighbors + 1)}
+    else:
+        closest_neighbors = {k:{v:[] for v in G.nodes()} for k in range(1,n_closest_neighbors + 1)}
+
+    for n in tqdm(att_nodes):
+        local_nodes = att_nodes.copy()
+        local_nodes = local_nodes[local_nodes != n]
+        previous_closest = None
+        for i in closest_neighbors:
+            if previous_closest is not None:
+                local_nodes = local_nodes[local_nodes != previous_closest]
+            if len(local_nodes) == 0:
+                default_value
+                short_path_dist = default_value
+                n2 = None
+
+            else:
+                if debug_time:
+                    st = time.time()
+                short_path_dist,n1,n2 = xu.shortest_path_between_two_sets_of_nodes(
+                    G_disc,
+                    node_list_1 = [n],
+                    node_list_2 = local_nodes,
+                    return_node_pairs=True,
+                    return_path_distance=True
+                )
+
+                if debug_time:
+                    print(f"Time for calculating shortest path = {time.time() - st}")
+                    st = time.time()
+
+
+            if verbose:
+                print(f"{i}th Closest neighbor of {n} was {n2} with path distance {short_path_dist}")
+            previous_closest = n2
+            
+            if not separate_branches:
+                closest_neighbors[i].append(short_path_dist)
+            else:
+                closest_neighbors[i][att_to_branch_dict[n]].append(short_path_dist)
+
+    if not separate_branches:
+        closest_neighbors = {k:np.array(v) for k,v in closest_neighbors.items()}
+    else:
+        for k in closest_neighbors:
+            for v in closest_neighbors[k]:
+                closest_neighbors[k][v] = np.array(closest_neighbors[k][v])
+        
+
+    if plot: 
+        nxu.plot_inter_attribute_intervals(
+            closest_neighbors,
+            attribute=attribute)
+        plt.show()
+    return closest_neighbors
+
+
+def n_data_attribues(G,attribute,n=None):
+    """
+    Purpose: To get the number of data attributes
+    belonging to a branch
+    """
+    if n is None:
+        n = [k for k in list(G.nodes()) if "S" not in k]
+    else:
+        n = [n]
+    return np.sum([len(G.nodes[n1][f"{attribute}_data"]) for n1 in n])
+
+
+
+import networkx_utils as xu
+import networkx as nx
+import numpy_utils as nu
+
+def inter_attribute_intervals_dict_from_neuron_G(
+    G,
+    attribute,
+    dendrite_only = True,
+    remove_starter_branches = True,
+    #return_attribute_density = True,
+    #return_compartment = True
+    verbose = True,
+    n_closest_neighbors = 3,
+    ):
+    """
+    Purpose: Want to build an inter attribute 
+    distance for all branches in a neuron
+    """
+    if type(attribute) == tuple:
+        attribute = list(attribute)
+    attribute= nu.convert_to_array_like(attribute)
+    data_dicts = []
+
+
+    if not nxu.soma_only_graph(G):
+        if dendrite_only:
+            G = nxu.dendrite_subgraph(G)
+
+        if remove_starter_branches:
+            G = nxu.remove_small_starter_branches(
+                    G,
+                    verbose = False,
+                    maintain_skeleton_connectivity = True)
+
+
+        limb_graphs,limb_idxs = nxu.all_limb_graphs(G,return_idxs=True)
+
+        if verbose:
+            print(f"# of limb graphs: {len(limb_graphs)}")
+
+        for idx,G_limb in zip(limb_idxs,limb_graphs):
+
+            if verbose:
+                print(f"\n--------Working on Limb {idx}---------")
+
+
+            limb_dicts = {n:dict(branch=n,
+                               compartment=nxu.compartment_from_node(G_limb,n),
+                               skeletal_length = G_limb.nodes[n]["skeletal_length"])
+                          for n in G_limb.nodes()}
+            for att in attribute:
+                for n in limb_dicts:
+                    limb_dicts[n][f"n_{att}"] = nxu.n_data_attribues(G_limb,attribute=att,n=n)
+                inter_dict_att = nxu.inter_attribute_intervals_from_G(
+                    G_limb,
+                    attribute=att,
+                    n_closest_neighbors=n_closest_neighbors,
+                    separate_branches = True,
+                    plot = False,
+                )
+
+                # Add the attribute data to the dicts
+                for i,data in inter_dict_att.items():
+                    for node_name,node_array in data.items():
+                        limb_dicts[node_name][f"{att}_intervals_{i}"] = node_array
+
+            data_dicts += list(limb_dicts.values())
+
+
+    return data_dicts
+
+    
 
 import neuron_nx_utils as nxu
