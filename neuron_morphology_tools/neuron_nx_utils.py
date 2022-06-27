@@ -1635,6 +1635,33 @@ def compartment_from_node(G,n=None):
         
     return G["compartment"].replace("_","")
 
+def width_from_node(
+    G,
+    n,
+    verbose = False):
+    """
+    Purpose: To get the width of a certain node
+    
+    Ex: 
+    import neuron_nx_utils as nxu
+    nxu.width_from_node(
+     G = G_obj,
+     n = "L0_5",
+        verbose = True
+
+    )
+    """
+    curr_key = G.nodes[n]
+    width = None
+    if len(curr_key["width_new"]) > 0:
+        width = curr_key["width_new"].get("no_spine_median_mesh_center",None)
+    if width is None:
+        if verbose:
+            print(f"Getting width from default width (not new width)")
+        width = key.get("width",None)
+
+    return width
+
 
 def attribute_graph_from_graph_obj(
     G,
@@ -1957,7 +1984,8 @@ def inter_attribute_intervals_dict_from_neuron_G(
             limb_dicts = {n:dict(branch=n,
                                compartment=nxu.compartment_from_node(G_limb,n),
                                  skeletal_distance_to_soma = nxu.distance_upstream_from_soma(G,node=n),
-                               skeletal_length = G_limb.nodes[n]["skeletal_length"])
+                               skeletal_length = G_limb.nodes[n]["skeletal_length"],
+                                width = nxu.width_from_node(G_limb,n))
                           for n in G_limb.nodes()}
             for att in attribute:
                 for n in limb_dicts:
