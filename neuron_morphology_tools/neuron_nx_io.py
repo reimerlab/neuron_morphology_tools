@@ -220,15 +220,17 @@ def feature_df_from_gnn_info(
     gnn_info,
     return_data_labels_split = True,
     inf_fill_value = 10000,
-    add_negative_label = False,):
+    add_negative_label = False,
+    label_name = None):
     
     
     df = pd.DataFrame(gnn_info["feature_matrix"])
     df.columns = gnn_info["features"]
 
     df=df.replace([np.inf],inf_fill_value)
-
-    label_name = gnn_info["label_name"]
+    
+    if label_name is not None:
+        label_name = gnn_info[label_name]
 
     if return_data_labels_split:
         if label_name is not None:
@@ -588,6 +590,30 @@ def GNN_info_cell_type_fine(
     return filepaths
 
 
-def export_skeleton()
+# ------------ For the simplified version of Gnn CODE -------------
+def compressed_dict_from_G(
+    G,
+    features = None,
+    graph_identifiers = (
+        "segment_id",
+        "split_index",
+        "nucleus_id",
+        "external_layer"),
+    dense_adjacency = True,
+    data_name = "data"
+    ):
+    g_atts = xu.graph_attr_dict(G)
+    curr_dict = {k:g_atts[k] for k in graph_identifiers}
+    curr_dict[data_name] = xu.adjacency_feature_info(
+        G,
+        return_df_for_feature_matrix = False,
+        feature_matrix_dtype = "float",
+        dense_adjacency=dense_adjacency,
+        features=features
+    )
+    
+    return curr_dict
+
+
 
 import neuron_nx_io as nxio
