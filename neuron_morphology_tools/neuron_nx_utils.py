@@ -1643,6 +1643,7 @@ def attribute_graph_from_graph_obj(
     verbose = False,
     return_attribute_nodes = False,
     return_attribute_nodes_to_branch_dict = True,
+    return_upstream_dist = False,
     ):
     """
     Purpose: To convert a graph object into 
@@ -1666,6 +1667,7 @@ def attribute_graph_from_graph_obj(
     ids_counter = 0
     attribute_ids = []
     attribute_ids_branch_dict = dict()
+    upstream_dist = {v:None for v in G.nodes()}
     nodes = list(G.nodes())
 
     for n in nodes:
@@ -1691,6 +1693,7 @@ def attribute_graph_from_graph_obj(
         
         attribute_ids.append(ids_data)
         attribute_ids_branch_dict.update({str(k):n for k in ids_data})
+        upstream_dist.update({str(k):upstream_data[j] for j,k in enumerate(ids_data)})
 
         order_idx = np.argsort(upstream_data)
         upstream_data_sort = upstream_data[order_idx]
@@ -1729,7 +1732,8 @@ def attribute_graph_from_graph_obj(
         print(f"Total Graph stats:")
         xu.print_node_edges_counts(output_G)
 
-    if (not return_attribute_nodes) and (not return_attribute_nodes_to_branch_dict):
+    if ((not return_attribute_nodes) and (not return_attribute_nodes_to_branch_dict)
+        and (not return_upstream_dist)):
         return output_G
     return_value =[output_G]
     
@@ -1737,6 +1741,9 @@ def attribute_graph_from_graph_obj(
         return_value.append(attribute_ids)
     if return_attribute_nodes_to_branch_dict:
         return_value.append(attribute_ids_branch_dict)
+        
+    if return_upstream_dist:
+        return_value.append(upstream_dist)
     
     return return_value
     
@@ -1789,6 +1796,7 @@ def inter_attribute_intervals_from_G(
     plot = False,
     verbose = False,
     separate_branches = True,
+    return_upstream_dist = True,
     ):
     """
     Purpose: To find the k inter-attribute
@@ -1807,24 +1815,33 @@ def inter_attribute_intervals_from_G(
     3) Return the lists of closest distances
     """
 
-    G_disc,att_nodes,att_to_branch_dict = nxu.attribute_graph_from_graph_obj(
+    (G_disc,
+     att_nodes,
+     att_to_branch_dict,
+     att_to_upstream_dist)= nxu.attribute_graph_from_graph_obj(
         G,
         attribute = attribute,
         verbose = verbose,
         return_attribute_nodes = True,
         return_attribute_nodes_to_branch_dict = True,
+        return_upstream_dist = True,
     )
 
-
+    upstream_dists = {v:[] for v in G.nodes()}
     if not separate_branches:
         closest_neighbors = {k:[] for k in range(1,n_closest_neighbors + 1)}
+        
     else:
         closest_neighbors = {k:{v:[] for v in G.nodes()} for k in range(1,n_closest_neighbors + 1)}
+        
 
     for n in tqdm(att_nodes):
         local_nodes = att_nodes.copy()
         local_nodes = local_nodes[local_nodes != n]
         previous_closest = None
+        
+        upstream_dists[att_to_branch_dict[n]].append(att_to_upstream_dist[n])
+        
         for i in closest_neighbors:
             if previous_closest is not None:
                 local_nodes = local_nodes[local_nodes != previous_closest]
@@ -1871,7 +1888,11 @@ def inter_attribute_intervals_from_G(
             closest_neighbors,
             attribute=attribute)
         plt.show()
-    return closest_neighbors
+        
+    if return_upstream_dist:
+        return closest_neighbors,upstream_dists
+    else:
+        return closest_neighbors
 
 
 def n_data_attribues(G,attribute,n=None):
@@ -1935,23 +1956,29 @@ def inter_attribute_intervals_dict_from_neuron_G(
 
             limb_dicts = {n:dict(branch=n,
                                compartment=nxu.compartment_from_node(G_limb,n),
+                                 skeletal_distance_to_soma = nxu.distance_upstream_from_soma(G,node=n),
                                skeletal_length = G_limb.nodes[n]["skeletal_length"])
                           for n in G_limb.nodes()}
             for att in attribute:
                 for n in limb_dicts:
                     limb_dicts[n][f"n_{att}"] = nxu.n_data_attribues(G_limb,attribute=att,n=n)
-                inter_dict_att = nxu.inter_attribute_intervals_from_G(
+                (inter_dict_att,
+                 upstream_dist)= nxu.inter_attribute_intervals_from_G(
                     G_limb,
                     attribute=att,
                     n_closest_neighbors=n_closest_neighbors,
                     separate_branches = True,
                     plot = False,
+                     return_upstream_dist = True
                 )
 
                 # Add the attribute data to the dicts
                 for i,data in inter_dict_att.items():
                     for node_name,node_array in data.items():
                         limb_dicts[node_name][f"{att}_intervals_{i}"] = node_array
+                        
+                for n in limb_dicts.keys():
+                    limb_dicts[n][f"{att}_upstream_dist"] = np.array(upstream_dist[n])
 
             data_dicts += list(limb_dicts.values())
 
