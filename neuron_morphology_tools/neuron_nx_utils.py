@@ -1670,35 +1670,36 @@ def attribute_graph_from_graph_obj(
 
         upstream_node = xu.upstream_node(G,n)
         if upstream_node is None:
-            upstream_node = f"L{n}_-1"
+            upstream_node = f"L-1"
 
         comp = compartment_from_node(key)
         attribute_data = key[attribute_name]
 
-        if len(attribute_data) > 0:
-            upstream_data = np.array([k["upstream_dist"] for k in attribute_data])
+        #if len(attribute_data) > 0:
+        upstream_data = np.array([k["upstream_dist"] for k in attribute_data])
 
-            # generates the ids for the current branch
-            ids_data = np.array([k[ids_name] for k in attribute_data])
-            if None in ids_data:
-                ids_data = np.arange(ids_counter,ids_counter + len(attribute_data)).astype('int')
-                ids_counter += len(attribute_data)
+        # generates the ids for the current branch
+        ids_data = np.array([k[ids_name] for k in attribute_data])
+        if None in ids_data:
+            ids_data = np.arange(ids_counter,ids_counter + len(attribute_data)).astype('int')
+            ids_counter += len(attribute_data)
 
-            order_idx = np.argsort(upstream_data)
-            upstream_data_sort = upstream_data[order_idx]
-            ids_data_sort = ids_data[order_idx]
+        order_idx = np.argsort(upstream_data)
+        upstream_data_sort = upstream_data[order_idx]
+        ids_data_sort = ids_data[order_idx]
 
-            upstream_data_sort = np.hstack([[0],upstream_data_sort,[key["skeletal_length"]]])
-            ids_data_sort = np.hstack([[upstream_node],ids_data_sort,[n]])
+        upstream_data_sort = np.hstack([[0],upstream_data_sort,[key["skeletal_length"]]])
+        ids_data_sort = np.hstack([[upstream_node],ids_data_sort,[n]])
 
-            edge_weights = upstream_data_sort[1:] - upstream_data_sort[:-1]
-            edges = np.vstack([ids_data_sort[:-1],ids_data_sort[1:]])
-            weighted_edges = np.vstack([edges,edge_weights]).T
+        edge_weights = upstream_data_sort[1:] - upstream_data_sort[:-1]
+        edges = np.vstack([ids_data_sort[:-1],ids_data_sort[1:]])
+        weighted_edges = np.vstack([edges,edge_weights]).T
 
-            if verbose:
-                print(f" --> node {n}: # of edges = {len(weighted_edges)}")
+        if verbose:
+            print(f" --> node {n}: # of edges = {len(weighted_edges)}")
+            #print(f"weighted_edges = {weighted_edges}")
 
-            graph_edges.append(weighted_edges)
+        graph_edges.append(weighted_edges)
 
 
     output_G = nx.Graph()
