@@ -1948,6 +1948,22 @@ def inter_attribute_intervals_dict_from_neuron_G(
     #return_compartment = True
     verbose = True,
     n_closest_neighbors = 3,
+    branch_features_to_add = (
+        "mesh_volume",
+        'n_synapses_head',
+        'n_synapses_neck',
+        'n_synapses_no_head',
+        'n_synapses_post',
+        'n_synapses_pre',
+        'n_synapses_shaft',
+        'n_synapses_spine',
+        "total_spine_volume",
+        "soma_distance_euclidean",
+        'parent_skeletal_angle',
+        'siblings_skeletal_angle_max',
+        'width_upstream',
+         'width_downstream',
+        ),
     ):
     """
     Purpose: Want to build an inter attribute 
@@ -1980,13 +1996,21 @@ def inter_attribute_intervals_dict_from_neuron_G(
             if verbose:
                 print(f"\n--------Working on Limb {idx}---------")
 
-
-            limb_dicts = {n:dict(branch=n,
-                               compartment=nxu.compartment_from_node(G_limb,n),
-                                 skeletal_distance_to_soma = nxu.distance_upstream_from_soma(G,node=n),
-                               skeletal_length = G_limb.nodes[n]["skeletal_length"],
-                                width = nxu.width_from_node(G_limb,n))
-                          for n in G_limb.nodes()}
+            limb_dicts = dict()
+            for n in G_limb.nodes():
+                curr_dt = dict(branch=n,
+                                   compartment=nxu.compartment_from_node(G_limb,n),
+                                     skeletal_distance_to_soma = nxu.distance_upstream_from_soma(G,node=n),
+                                   skeletal_length = G_limb.nodes[n]["skeletal_length"],
+                                    width = nxu.width_from_node(G_limb,n))
+                if branch_features_to_add is not None:
+                    for k in branch_features_to_add:
+                        curr_dt[k] = G_limb.nodes[n][k]
+                        
+                limb_dicts[n] = curr_dt
+                              
+            
+            
             for att in attribute:
                 for n in limb_dicts:
                     limb_dicts[n][f"n_{att}"] = nxu.n_data_attribues(G_limb,attribute=att,n=n)
