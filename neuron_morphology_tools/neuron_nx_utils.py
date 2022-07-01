@@ -396,9 +396,19 @@ def export_swc_dicts(
 
     index = 0
 
-    center_point = G.nodes[soma_node_name]["mesh_center"]
+    if soma_node_name in G.nodes():
+        center_point = G.nodes[soma_node_name]["mesh_center"]
+        source_node = soma_node_name
+        node_order = nx.dfs_preorder_nodes(G,source = soma_node_name)
+        
+    else:
+        center_point = np.mean([G.nodes[k]["mesh_center"]
+                               for k in G.nodes()],axis=0)
+        source_node = xu.most_upstream_node(G)
+        node_order = nx.dfs_preorder_nodes(
+            G,source = source_node)
 
-    node_order = nx.dfs_preorder_nodes(G,source = "S0")
+    
     node_to_index_map = dict()
     swc_dicts = []
     for n in node_order:
@@ -411,18 +421,24 @@ def export_swc_dicts(
         else:
             skeleton_pts = np.array([G.nodes[n][default_skeleton_pt]])
 
-        if n == soma_node_name:
+        curr_compartment  = G.nodes[n]["compartment"]
+        if n == source_node:
+            if n != soma_node_name: 
+                curr_compartment = "soma"
             parent_idx = -1
-            width_points = [nxu.soma_radius(G,verbose = False)]
         else:
             parent_name = xu.parent_node(G,n)
             parent_idx = node_to_index_map[parent_name][-1]
+            
+        if n == soma_node_name:
+            width_points = [nxu.soma_radius(G,verbose = False)]
+        else:
             if use_skeletal_coordinates:
                 width_points = [k["width"] for k in G.nodes[n]["width_data"]]
             else:
                 width_points = [G.nodes[n]["width_new"]["no_spine_median_mesh_center"]]
 
-        curr_compartment  = G.nodes[n]["compartment"]
+        
         if curr_compartment is None:
             curr_compartment = default_compartment
             
@@ -1671,6 +1687,7 @@ def attribute_graph_from_graph_obj(
     return_attribute_nodes = False,
     return_attribute_nodes_to_branch_dict = True,
     return_upstream_dist = False,
+    exclude_presyn = False,
     ):
     """
     Purpose: To convert a graph object into 
@@ -1707,6 +1724,10 @@ def attribute_graph_from_graph_obj(
 
         comp = compartment_from_node(key)
         attribute_data = key[attribute_name]
+        
+        if attribute == "synapse" and exclude_presyn:
+            #print(f"Excluding presyns")
+            attribute_data = [k for k in attribute_data if k["syn_type"] == "postsyn"]
 
         #if len(attribute_data) > 0:
         upstream_data = np.array([k["upstream_dist"] for k in attribute_data])
@@ -1824,6 +1845,7 @@ def inter_attribute_intervals_from_G(
     verbose = False,
     separate_branches = True,
     return_upstream_dist = True,
+    exclude_presyn = True,
     ):
     """
     Purpose: To find the k inter-attribute
@@ -1852,6 +1874,7 @@ def inter_attribute_intervals_from_G(
         return_attribute_nodes = True,
         return_attribute_nodes_to_branch_dict = True,
         return_upstream_dist = True,
+        exclude_presyn = exclude_presyn,
     )
 
     upstream_dists = {v:[] for v in G.nodes()}
@@ -1922,7 +1945,7 @@ def inter_attribute_intervals_from_G(
         return closest_neighbors
 
 
-def n_data_attribues(G,attribute,n=None):
+def n_data_attribues(G,attribute,n=None,exclude_presyn = True):
     """
     Purpose: To get the number of data attributes
     belonging to a branch
@@ -1931,7 +1954,13 @@ def n_data_attribues(G,attribute,n=None):
         n = [k for k in list(G.nodes()) if "S" not in k]
     else:
         n = [n]
-    return np.sum([len(G.nodes[n1][f"{attribute}_data"]) for n1 in n])
+        
+    curr_data = [G.nodes[n1][f"{attribute}_data"] for n1 in n]
+    if exclude_presyn and attribute == "synapse":
+        curr_data = [[k for k in v
+                     if k["syn_type"] != "presyn"] for v in curr_data]
+        
+    return np.sum([len(k) for k in curr_data])
 
 
 
@@ -1939,9 +1968,27 @@ import networkx_utils as xu
 import networkx as nx
 import numpy_utils as nu
 
+def inter_attribute_G_preprocessing(
+    G,
+    dendrite_only = True,
+    remove_starter_branches = True,
+    ):
+    
+    if dendrite_only:
+        G = nxu.dendrite_subgraph(G)
+
+    if remove_starter_branches:
+        G = nxu.remove_small_starter_branches(
+                G,
+                verbose = False,
+                maintain_skeleton_connectivity = True)
+    return G
+    
+    
+
 def inter_attribute_intervals_dict_from_neuron_G(
     G,
-    attribute,
+    attribute=None,
     dendrite_only = True,
     remove_starter_branches = True,
     #return_attribute_density = True,
@@ -1964,11 +2011,23 @@ def inter_attribute_intervals_dict_from_neuron_G(
         'width_upstream',
          'width_downstream',
         ),
+    
+    
+    # -------- arguments for random shuffling -------
+    shuffle_upstream_dist = False,
+    attribute_sk_nullification = None,
+    exclude_presyn = True,
+    discretization_length = 100,
+    seed = None,
+    
     ):
     """
     Purpose: Want to build an inter attribute 
     distance for all branches in a neuron
     """
+    if attribute is None:
+        attribute = ("spine","synapse")
+        
     if type(attribute) == tuple:
         attribute = list(attribute)
     attribute= nu.convert_to_array_like(attribute)
@@ -1976,22 +2035,31 @@ def inter_attribute_intervals_dict_from_neuron_G(
 
 
     if not nxu.soma_only_graph(G):
-        if dendrite_only:
-            G = nxu.dendrite_subgraph(G)
-
-        if remove_starter_branches:
-            G = nxu.remove_small_starter_branches(
-                    G,
-                    verbose = False,
-                    maintain_skeleton_connectivity = True)
-
-
+        
+        G = nxu.inter_attribute_G_preprocessing(
+            G,
+            dendrite_only = dendrite_only,
+            remove_starter_branches = remove_starter_branches,
+        )
+        
         limb_graphs,limb_idxs = nxu.all_limb_graphs(G,return_idxs=True)
 
         if verbose:
             print(f"# of limb graphs: {len(limb_graphs)}")
 
         for idx,G_limb in zip(limb_idxs,limb_graphs):
+            
+            if shuffle_upstream_dist: 
+                if verbose:
+                    print(f"Applying shuffle_upstream_dist")
+                G_limb = nxu.shuffle_upstream_dist_on_data_attribute(
+                    G_limb,
+                    attribute = attribute,
+                    attribute_sk_nullification = attribute_sk_nullification,
+                    exclude_presyn = exclude_presyn,
+                    discretization_length = discretization_length,
+                    seed = seed,
+                )
 
             if verbose:
                 print(f"\n--------Working on Limb {idx}---------")
@@ -2036,6 +2104,176 @@ def inter_attribute_intervals_dict_from_neuron_G(
 
 
     return data_dicts
+
+
+
+# =============== For the random shuffling (6320)==================
+import numpy_utils as nu
+def shuffle_upstream_dist_on_data_attribute(
+    G,
+    attribute = None,
+    attribute_sk_nullification = None,
+    exclude_presyn = True,
+    discretization_length = 100,
+    seed = None,
+    plot_G = False,
+    verbose = False,
+    ):
+    """
+    Purpose: to randomly shuffle 
+    the upstream dists of data attributes
+    in a neuron object (for null testing)
+    
+    Ex: 
+    import neuron_nx_utils as nxu
+
+    segment_id = 864691134885060346
+    split_index = 0
+
+    plot = False
+    plot_proofread_neuron = False
+
+
+    G_obj = hdju.graph_obj_from_auto_proof_stage(
+            segment_id=segment_id,
+            split_index=split_index,
+        )
+
+    if plot:
+        nxu.plot(G_obj)
+
+    if plot_proofread_neuron:
+        hdju.plot_proofread_neuron(
+            segment_id,split_index,
+        )
+
+    G = nxu.inter_attribute_G_preprocessing(
+        G,
+        dendrite_only = dendrite_only,
+        remove_starter_branches = dendrite_only,
+    )
+
+    limb_graphs,limb_idxs = nxu.all_limb_graphs(G,return_idxs=True)
+
+    nxu.shuffle_upstream_dist_on_data_attribute(
+        limb_graphs[0],
+        verbose = True
+    )
+    """
+    if attribute_sk_nullification is None:
+        attribute_sk_nullification = dict(spines=1000)
+        
+    if attribute is None:
+        attribute = ["spine",'synapse']
+        
+    attribute = nu.convert_to_array_like(attribute)
+
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    G = G.copy()
+
+    if plot_G:
+        nxu.plot(G)
+        
+    for n in G.nodes():
+        if verbose:
+            print(f"-- Working on node {n}----")
+        branch_dict = G.nodes[n]
+
+        #1) Get the skeleton length
+        skeletal_length = branch_dict["skeletal_length"]
+        if verbose:
+            print(f"skeletal_length = {skeletal_length}")
+
+
+        #2) Create an array like a skeleton
+        sk_array = nu.arange_with_leftover(skeletal_length,step = discretization_length)
+
+#         if verbose:
+#             print(f"sk_array = {sk_array}")
+            
+
+
+        for f in attribute:
+            #a) gets the nullification distance
+            f_null = attribute_sk_nullification.get(f,0)
+            #b) Get the number of that feature to randomly sample
+            n_name = f"n_{f}s"
+            if f == "synapse" and exclude_presyn:
+                n_name = f"n_{f}s_post"
+            n_feat = branch_dict[n_name]
+
+            if verbose:
+                print(f"{n_name} = {n_feat}")
+
+
+            sk_array_curr = sk_array[(sk_array >= f_null)
+                                    & (sk_array <= (sk_array[-1] - f_null))]
+
+        #     if verbose:
+        #         print(f"sk_array_curr = {sk_array_curr}")
+
+            # randomly sample from the distance array
+            sample = nu.randomly_sample_array(sk_array_curr,n_samples = n_feat,replace = True)
+            if verbose:
+                print(f"samples = {sample}")
+
+            # need to alter the upstream distances
+            counter = 0
+            for curr_dict in G.nodes[n][f"{f}_data"]:
+                if f == "synapse" and exclude_presyn:
+                    if curr_dict["syn_type"] == "presyn":
+                        continue
+                        print(f"Skipping presyn")
+                curr_dict["upstream_dist"] = sample[counter]
+                counter += 1
+
+
+    return G
+
+
+def plot_inter_attribute_intervals_from_dicts(
+    dicts,
+    attribute = "spine",
+    bins = 100,
+    title = None,
+    um = True,
+    attributes_to_plot = None,
+    verbose = True
+    ):
+    
+    """
+    Purpose: To plot a certain attributes from a list of 
+    datajoint dicts storing the distributions
+
+    Pseudocode: 
+    """
+
+    attributes_to_plot = [k for k in dicts[0] if f"{attribute}_interval" in k]
+
+
+    fig,ax = plt.subplots(1,1,)
+
+    for att in attributes_to_plot:
+        all_data = np.hstack([k[att] for k in dicts])
+        if verbose:
+            print(f"{att} mean = {np.mean(all_data)}")
+        if um:
+            all_data  = all_data/1000
+        ax.hist(all_data,
+            label=att,
+            alpha = 0.5,
+            bins = bins)
+
+        if title is None:
+            title = f"Closest {attribute}"
+
+        ax.set_title(title)
+        ax.set_xlabel(f"Distance (um)")
+        ax.set_ylabel(f"Count")
+        ax.legend()
 
     
 
