@@ -278,7 +278,7 @@ def add_skeleton_vector_features(
 
 def add_any_missing_node_features(
     G,
-    features,
+    features=None,
     verbose = False,
     inplace = False,
     ):
@@ -287,7 +287,9 @@ def add_any_missing_node_features(
     1) Check that all the features are requested
     2) Generate the features that are not
     """
-
+    if features is None:
+        features = features_to_output_for_gnn
+    
     curr_features = nxf.features_list(G)
     features_not_computed = np.setdiff1d(features,curr_features)
 
@@ -304,9 +306,27 @@ def add_any_missing_node_features(
     return G_new
 
 
+features_to_output_for_gnn = [
+    "n_spines",
+    "total_spine_volume",
+    "n_synapses_post",
+    "n_synapses_pre",
+    "n_synapses_head",
+    "n_synapses_neck",
+    #"parent_skeletal_angle",
+    "skeletal_length",
+    "skeleton_vector_upstream_theta",
+    "skeleton_vector_upstream_phi",
+    "skeleton_vector_downstream_theta",
+    "skeleton_vector_downstream_phi",
+    "width_upstream",
+    "width_no_spine",
+    "width_downstream",
+    ]
+
 def filter_G_features(
     G,
-    features,
+    features=None,
     inplace = False,
     verbose = False,
     ):

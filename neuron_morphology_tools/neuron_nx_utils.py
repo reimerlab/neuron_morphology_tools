@@ -1131,7 +1131,7 @@ def soma_connected_nodes(
 import numpy as np
 def most_upstream_nodes(
     G,
-    nodes,
+    nodes=None,
     verbose = False,
     return_downstream_count = True,
     ):
@@ -1146,6 +1146,9 @@ def most_upstream_nodes(
         verbose = True
     )
     """
+    if nodes is None:
+        nodes = list(G.nodes())
+        
     nodes = np.array(nodes)
 
     down_count = np.array([xu.n_all_downstream_nodes(G,k) for k in nodes])
@@ -1161,6 +1164,25 @@ def most_upstream_nodes(
         return nodes_sorted,down_count_sorted
     else:
         return nodes_sorted
+
+def most_upstream_node(
+    G,
+    nodes = None,
+    verbose = False,
+    ):
+    
+    if len(G.nodes()) == 0:
+        return None
+    
+    if len(G.nodes()) == 1:
+        return list(G.nodes())[0]
+    
+    return nxu.most_upstream_nodes(
+        G,
+        nodes=nodes,
+        verbose = verbose,
+        return_downstream_count = False,
+        )[0]
     
 def limb_graphs_from_soma_connected_nodes(
     G,
@@ -2274,6 +2296,90 @@ def plot_inter_attribute_intervals_from_dicts(
         ax.set_xlabel(f"Distance (um)")
         ax.set_ylabel(f"Count")
         ax.legend()
+        
+import neuron_nx_feature_processing as nxf  
+def filter_graph(
+    G,
+    remove_starter_branches = True,
+    distance_threshold = None,
+    distance_threshold_min=None,
+    features_to_output = None,
+    filter_away_soma = True,
+    output_graph_type = "Graph",
+    verbose = False,
+    ):
+    """
+    Purpose: To filter the graph object
+    before the GNN processes
+    
+    Pseudocode: 
+    1) Reduces to only dendrite subgraph
+    2) Removes any small starter nodes
+    3) Restricts to a certain distance
+    4) Filter to certain features
+    5) Filter into soma 
+    6) Turn into non-directed graph
+    """
+    if features_to_output is None:
+        features_to_output = nxf.features_to_output_for_gnn
+    
+    #1) Reduces to only dendrite subgraph
+    G = nxu.dendrite_subgraph(G)
+    
+    #2) Removes any small starter nodes
+    if remove_starter_branches:
+        G_filt = nxu.remove_small_starter_branches(
+            G,
+            verbose = verbose,
+            maintain_skeleton_connectivity = True)
+    else:
+        G_filt = G
+        
+    #3) Restricts to a certain distance
+    if distance_threshold is not None:
+        G_dist_filt = nxu.nodes_within_distance_upstream_from_soma(
+            G_filt,
+            verbose = verbose,
+            distance_threshold = distance_threshold,
+            return_subgraph = True,
+        )
+    else:
+        G_dist_filt = G_filt
+        
+    if distance_threshold_min is not None:
+        G_dist_filt = nxu.nodes_farther_than_distance_from_soma(
+            G_dist_filt,
+            verbose = verbose,
+            distance_threshold = distance_threshold_min,
+            return_subgraph = True,
+            distance_type = "downstream",
+        )
+        
+
+    #4) Filter to certain features
+    if ((len(nxu.limb_branch_subgraph(G_dist_filt).nodes()) > 0)
+        and (features_to_output is not None)):
+        G_with_feats = nxf.filter_G_features(
+                    G_dist_filt,
+                    features=features_to_output,
+                    inplace = False,
+                    verbose = verbose,
+                )
+    else:
+        G_with_feats = G_dist_filt
+    
+    
+    if filter_away_soma:
+        #5) Filter into soma 
+        G_no_soma = nxu.soma_filter_by_complete_graph(G_with_feats,plot=False)
+    else:
+        G_no_soma = G_with_feats
+        
+    #6) Turn into non-directed graph
+    if output_graph_type is not None:
+        G_no_soma = getattr(nx,output_graph_type)(G_no_soma)
+    
+    return G_no_soma
 
     
 

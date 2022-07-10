@@ -615,5 +615,4 @@ def compressed_dict_from_G(
     return curr_dict
 
 
-
 import neuron_nx_io as nxio
