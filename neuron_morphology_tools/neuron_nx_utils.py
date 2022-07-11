@@ -674,6 +674,22 @@ def all_limb_graphs(G,return_idxs = False):
         return return_graphs,limb_idxs
     else:
         return return_graphs
+    
+def all_limb_graphs_off_soma(G,verbose = False):
+    components = xu.connected_components(
+        xu.remove_nodes_from(G,[nxu.soma_node_name_global]
+                            )
+    )
+    
+    return_graphs = [G.subgraph(subgraph_nodes).copy()
+                     for subgraph_nodes in components]
+    
+    if verbose:
+        print(f"# of limb subgraphs off soma = {len(return_graphs)}")
+    
+    return return_graphs
+    
+    
 
 def limb_graph(
     G,
@@ -1125,7 +1141,12 @@ def segment_id_from_G(G,return_split_index = True):
 def soma_connected_nodes(
     G,
     ):
-    return list(G[nxu.soma_node_name_global].keys())
+    try:
+        curr_node = nxu.soma_node_name_global
+        return list(G[curr_node].keys())
+    except:
+        curr_node = nxu.most_upstream_node(G)
+        return list(G[curr_node].keys())
 
 
 import numpy as np
@@ -1252,6 +1273,8 @@ def distance_from_node_to_soma(
     if include_self_distance:
         total_lengths.append(G.nodes[node][distance_attribute])
         node_path.append(node)
+        
+    # here is where can check if the attribute already exists
 
     upstream_node = xu.upstream_node(G,node)
 
@@ -1278,6 +1301,7 @@ def distance_upstream_from_soma(
     G,
     node,
     verbose = False,
+    from_attributes=False,
     **kwargs
     ):
     """
@@ -1287,6 +1311,8 @@ def distance_upstream_from_soma(
     verbose = True,   
     )
     """
+    if from_attributes:
+        return G.nodes[node]["soma_distance_skeletal"]
     
     return distance_from_node_to_soma(
     G,
@@ -1301,6 +1327,7 @@ def distance_downstream_from_soma(
     G,
     node,
     verbose = False,
+    from_attributes=False,
     **kwargs
     ):
     """
@@ -1311,6 +1338,8 @@ def distance_downstream_from_soma(
         verbose = True,   
     )
     """
+    if from_attributes:
+        return G.nodes[node]["soma_distance_skeletal"] + G.nodes[node]["skeletal_length"]
     
     return distance_from_node_to_soma(
     G,
@@ -1325,7 +1354,8 @@ import pandas as pd
 def distance_from_soma_df(
     G,
     nodes = None,
-    distance_type = "upstream",):
+    distance_type = "upstream",
+    from_attributes=False):
     """
     Purpose: Find all the soma distances of 
     all the nodes
@@ -1333,7 +1363,7 @@ def distance_from_soma_df(
     if nodes is None:
         nodes = nxu.limb_branch_nodes(G)
 
-    dist_dict = [{"node":n,"soma_distance":getattr(nxu,f"distance_{distance_type}_from_soma")(G,n)}
+    dist_dict = [{"node":n,"soma_distance":getattr(nxu,f"distance_{distance_type}_from_soma")(G,n,from_attributes=from_attributes)}
                 for n in nodes]
 
     dist_dict = pd.DataFrame.from_records(dist_dict)
@@ -1342,21 +1372,26 @@ def distance_from_soma_df(
 
 def distance_upstream_from_soma_df(
     G,
-    nodes = None,):
+    nodes = None,
+    from_attributes=False,
+    ):
     
     return nxu.distance_from_soma_df(
     G,
     nodes = nodes,
-    distance_type = "upstream",)
+    distance_type = "upstream",
+    from_attributes=from_attributes,)
 
 def distance_downstream_from_soma_df(
     G,
-    nodes = None,):
+    nodes = None,
+    from_attributes=False):
     
     return nxu.distance_from_soma_df(
     G,
     nodes = nodes,
-    distance_type = "downstream",)
+    distance_type = "downstream",
+    from_attributes=from_attributes,)
 
 def nodes_distance_query_from_soma(
     G,
@@ -1368,6 +1403,7 @@ def nodes_distance_query_from_soma(
     return_soma_with_sugraph = True,
     verbose = False,
     maintain_skeleton_connectivity = True,
+    from_attributes = False,
     **kwargs
     ):
     """
@@ -1375,7 +1411,13 @@ def nodes_distance_query_from_soma(
     a certain distance or farther away than
     a certain distance from soma
     """
-    dist_df = getattr(nxu,f"distance_{distance_type}_from_soma_df")(G,nodes=nodes)
+    
+    # calculates the distance if not already available
+    if from_attributes:
+        G = nxf.add_any_missing_node_features(G)
+    dist_df = getattr(nxu,f"distance_{distance_type}_from_soma_df")(G,nodes=nodes,
+                                                                        from_attributes=from_attributes)
+    
     
     
     
@@ -1425,6 +1467,8 @@ def nodes_within_distance_from_soma(
     nodes=None,
     return_subgraph=False,
     verbose = False,
+    from_attributes=False,
+    **kwargs
     ):
     
     """
@@ -1441,6 +1485,8 @@ def nodes_within_distance_from_soma(
     nodes=nodes,
     return_subgraph=return_subgraph,
     verbose = verbose,
+    from_attributes=from_attributes,
+    **kwargs
     )
     
     
@@ -1453,6 +1499,8 @@ def nodes_farther_than_distance_from_soma(
     nodes=None,
     return_subgraph=False,
     verbose = False,
+    from_attributes = False,
+    **kwargs
     ):
     
     return nxu.nodes_distance_query_from_soma(
@@ -1463,6 +1511,8 @@ def nodes_farther_than_distance_from_soma(
     nodes=nodes,
     return_subgraph=return_subgraph,
     verbose = verbose,
+    from_attributes=from_attributes,
+    **kwargs
     )
 
 def nodes_within_distance_upstream_from_soma(
@@ -2358,7 +2408,8 @@ def filter_graph(
 
     #4) Filter to certain features
     if ((len(nxu.limb_branch_subgraph(G_dist_filt).nodes()) > 0)
-        and (features_to_output is not None)):
+        and (features_to_output is not None) and (len(features_to_output) > 0)):
+        
         G_with_feats = nxf.filter_G_features(
                     G_dist_filt,
                     features=features_to_output,
@@ -2380,6 +2431,90 @@ def filter_graph(
         G_no_soma = getattr(nx,output_graph_type)(G_no_soma)
     
     return G_no_soma
+
+
+# --------- skeleton data ------------
+def skeleton_soma_to_limb_start(G):
+    if soma_node_name_global in G.nodes():
+        nodes = np.vstack([G.nodes[soma_node_name_global]['endpoint_upstream']] + [G.nodes[k]["endpoint_upstream"] for k
+                   in nxu.soma_connected_nodes(G)])
+        edges = np.array([[0,k] for k in range(1,len(nodes))])
+    else:
+        nodes = np.array([G.nodes[soma_node_name_global]['endpoint_upstream']]).reshape(-1,3)
+        edges = np.array([]).reshape(-1,2)
+        
+    return nodes,edges
+
+    
+import ipyvolume_utils as ipvu
+import numpy as np
+
+def skeleton(
+    G,
+    plot = False,
+    verbose = False,
+    include_soma = True,
+    ):
+    
+    skeleton_nodes = np.array([])
+    skeleton_edges = np.array([])
+
+    for node in nxu.limb_branch_nodes(G):
+        curr_nodes = G.nodes[node]["skeleton_data"]
+        edges = np.vstack([np.arange(len(curr_nodes))[:-1],
+                          np.arange(len(curr_nodes))[1:],]).T
+        edges += len(skeleton_nodes)
+        if len(skeleton_nodes) > 0:
+            skeleton_nodes = np.vstack([skeleton_nodes,curr_nodes])
+            skeleton_edges = np.vstack([skeleton_edges,edges])
+        else:
+            skeleton_nodes = curr_nodes
+            skeleton_edges = edges
+
+    # add on the soma edges if have them
+    if include_soma:
+        soma_nodes,soma_edges = nxu.skeleton_soma_to_limb_start(G)
+        if len(soma_edges) > 0:
+            soma_edges += len(skeleton_nodes)
+        skeleton_nodes = np.vstack([skeleton_nodes,soma_nodes])
+        skeleton_edges = np.vstack([skeleton_edges,soma_edges])
+
+    if plot:
+        ipvu.plot_obj(
+            array = skeleton_nodes,
+            lines=skeleton_edges,
+            flip_y = True
+
+        )
+        
+    if verbose:
+        print(f"# of nodes = {len(skeleton_nodes)}")
+        print(f"# of edges = {len(skeleton_edges)}")
+        
+    return skeleton_nodes,skeleton_edges
+
+def skeleton_nodes(
+    G,
+    verbose = False,
+    include_soma = False,
+    **kwargs):
+    
+    return nxu.skeleton(
+        G,
+        verbose = verbose,
+        include_soma=include_soma,
+        **kwargs)[0]
+    
+    
+def soma_center(G,use_most_upstream_as_backup = True):
+    if soma_node_name_global in G.nodes():
+        return G.nodes[soma_node_name_global]["endpoint_upstream"]
+    else:
+        try:
+            return G.nodes[nxu.most_upstream_node(G)]["endpoint_upstream"]
+        except:
+            return None
+    
 
     
 

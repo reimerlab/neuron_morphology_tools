@@ -306,7 +306,7 @@ def add_any_missing_node_features(
     return G_new
 
 
-features_to_output_for_gnn = [
+features_to_output_for_gnn_old = [
     "n_spines",
     "total_spine_volume",
     "n_synapses_post",
@@ -323,6 +323,41 @@ features_to_output_for_gnn = [
     "width_no_spine",
     "width_downstream",
     ]
+
+features_to_output_for_gnn = [
+    # skeletal features
+     'skeletal_length',
+     'skeleton_vector_upstream_theta',
+     'skeleton_vector_upstream_phi',
+     'skeleton_vector_downstream_theta',
+     'skeleton_vector_downstream_phi',
+    
+    #width features
+     'width_upstream',
+     'width_no_spine',
+     'width_downstream',
+    
+    # synapse features
+    'n_synapses_post',
+    'n_synapses_pre',
+    'n_synapses_head_postsyn',
+    'n_synapses_neck_postsyn',
+    'n_synapses_shaft_postsyn',
+    'n_synapses_no_head_postsyn',
+    
+    # the volumes  of each
+    'synapse_volume_shaft_postsyn_sum',
+     'synapse_volume_head_postsyn_sum',
+     'synapse_volume_no_head_postsyn_sum',
+     'synapse_volume_neck_postsyn_sum',
+     'synapse_volume_postsyn_sum',
+    
+    #spine features
+    'n_spines',
+    'spine_volume_sum',
+    
+]
+    
 
 def filter_G_features(
     G,

@@ -9,6 +9,7 @@ import pandas_utils as pu
 import networkx_utils as xu
 import neuron_nx_utils as nxu
 import pandas as pd
+import numpy_utils as nu
 
 node_identifier = "u"
 
@@ -21,7 +22,7 @@ def summary_statistic_over_attributes(
     node_df=None,
     verbose = False,
     return_df = False,
-    
+    append_statistic_name = False,
     ):
     if node_df is None:
         node_df = xu.node_df(G)
@@ -36,14 +37,16 @@ def summary_statistic_over_attributes(
         verbose = verbose,
         return_df = return_df,
         weight=weight,
+        append_statistic_name=append_statistic_name
     )
 
 def n_branches(G):
-    len(nxu.limb_branch_nodes(G))
+    return len(nxu.limb_branch_nodes(G))
     
 def starting_coordinate(
     G,
-    attribute = "endpoint_upstream"):
+    attribute = "endpoint_upstream",
+    return_dict = False):
     """
     Purpose: To find the startng centroid of a graph
 
@@ -52,7 +55,12 @@ def starting_coordinate(
     """
 
     node = nxu.most_upstream_node(G)
-    return G.nodes[node][attribute]
+    array = G.nodes[node][attribute]
+    if not return_dict:
+        return array
+    else:
+        return {f"starting_coordinate_{k}":v for k,v in zip(["x","y","z"],
+                                                    array)}
 
 import time
 def summary_statistic_over_dynamic_attribute(
@@ -123,6 +131,10 @@ def summary_statistic_over_synapses(
     **kwargs
     )
 
+import neuron_nx_feature_processing as nxf
+def add_any_missing_node_features(G,**kwargs):
+    return nxf.add_any_missing_node_features(G)
+
 def summary_statistic_over_spines(
     G,
     node,
@@ -157,6 +169,232 @@ def add_summary_statistic_over_dynamic_attributes_to_G(
                             
         if verbose:
             print(f"Node {node}: {time.time() - st}")
+            
+    return G
+            
+def skeleton_bounding_box(
+    G,
+    soma_relative = False,
+    soma_center = None,
+    verbose = False,
+    return_dict = False,
+    
+    ):
+    """
+    Purpose: To compute the bounding box of a certain limb
+    based on the skeleton data
+
+    Pseudocode:
+    1) Get the skeleton nodes
+    2) Computes the bounding box of the scatter points
+    3) If soma_relative flag set --> subtracts the soma
+    """
+
+
+    coordinates = nxu.skeleton_nodes(G)
+
+    if len(coordinates) == 0:
+        bbox = -1*np.ones((2,3))
+    else:
+        bbox = nu.bounding_box(coordinates)
+        if soma_relative:
+            if soma_center is None:
+                soma_center = nxu.soma_center(G) 
+            bbox = bbox - soma_center
+
+    if verbose:
+        print(f"bbox (soma_relative = {soma_relative}):\n{bbox}")
+
+    if return_dict:
+        return dict(
+            bbox_x_min=bbox[0][0],
+            bbox_y_min=bbox[0][1],
+            bbox_z_min=bbox[0][2],
+            
+            bbox_x_max=bbox[1][0],
+            bbox_y_max=bbox[1][1],
+            bbox_z_max=bbox[1][2],
+        )
+        
+    return bbox
+            
+            
+# ------------ For computing the overall statistics of a graph ----------#
+import general_utils as gu
+
+statistics_survey_attributes_to_sum = [
+            'skeletal_length',
+            'n_spines',
+            'spine_volume_sum',
+            'n_synapses',
+            'n_synapses_post',
+             'n_synapses_pre',
+            'n_synapses_head_postsyn',
+             'n_synapses_neck_postsyn',
+             'n_synapses_no_head_postsyn',
+             'n_synapses_shaft_postsyn',
+             'n_synapses_spine_postsyn',
+             'synapse_volume_shaft_postsyn_sum',
+            'synapse_volume_head_postsyn_sum',
+            'synapse_volume_neck_postsyn_sum',
+            'synapse_volume_no_head_postsyn_sum',
+            'synapse_volume_spine_postsyn_sum',
+]
+
+statistics_survey_attributes_to_mean = [
+            'width_no_spine',
+]
+
+statistics_survey_attributes_to_max = [
+            "soma_start_angle",
+]
+
+statistics_survey_attributes_to_min = [
+            "soma_start_angle",
+]
+def statistics_survey_from_graph(
+    G,
+    attributes_to_sum=None,
+    attributes_to_mean = None,
+    attributes_to_max=None,
+    attributes_to_min = None,
+    soma_center = None,
+    compute_compartments = True,
+    add_features = True,
+    
+    # for dividing some features
+    divisor = 1_000_000_000,
+    attributes_to_divide = dict(
+        spine_volume_sum = 1_000_000_000,
+        
+    ),
+    verbose = False,
+    
+    ):
+    """
+    Purpose: List of graph statistics 
+    that by default would want to measure
+
+    stats that need to be manually calculatd
+    - n_nodes
+
+    """
+    if add_features:
+        G = nxst.add_summary_statistic_over_dynamic_attributes_to_G(G)
+        G = nxst.add_any_missing_node_features(G)
+        
+    
+    if attributes_to_sum is None:
+        attributes_to_sum = statistics_survey_attributes_to_sum
+        
+    if attributes_to_mean is None:
+        attributes_to_mean = statistics_survey_attributes_to_mean
+    
+    if attributes_to_max is None:
+        attributes_to_max = statistics_survey_attributes_to_max
+        
+    if attributes_to_min is None:
+        attributes_to_min = statistics_survey_attributes_to_min
+
+    if soma_center is None:
+            soma_center = nxu.soma_center(G)
+
+    all_data_dicts = []
+
+    compartment_restrictions = [None]
+    if compute_compartments:
+        compartment_restrictions += ['axon', 'oblique', 'apical', 'apical_shaft','apical_tuft', 'basal']
+        
+    for comp in compartment_restrictions:
+        if comp is None:
+            G_stat = G
+            prefix = ''
+        else:
+            G_stat = xu.subgraph_from_node_query(G,f"compartment == '{comp}'")
+            prefix = f'{comp}_'
+            
+        if verbose:
+            print(f"--- Working on compartment {comp} ({len(G_stat.nodes())} nodes) ----")
+
+        if len(G_stat.nodes()) == 0:
+            data_dict = {}
+
+        else:
+            # want to iterate over whole graph and compartment
+            data_dict = dict(
+                n_branches = nxst.n_branches(G_stat)
+            )
+
+            attributes_to_sum_dict = nxst.summary_statistic_over_attributes(
+                attributes = attributes_to_sum,
+                summary_statistic = "sum",
+                G=G_stat,
+                return_df=False,
+            )
+            
+            if verbose:
+                print(f"attributes_to_sum_dict = {attributes_to_sum_dict}")
+
+            attributes_to_mean_dict = nxst.summary_statistic_over_attributes(
+                attributes = attributes_to_mean,
+                summary_statistic = "mean",
+                weight="skeletal_length",
+                G=G_stat,
+                return_df=False,
+            )
+
+            attributes_to_max_dict = nxst.summary_statistic_over_attributes(
+                attributes = attributes_to_max,
+                summary_statistic = "max",
+                append_statistic_name=True,
+                G=G_stat,
+                return_df=False,
+            )
+
+            attributes_to_min_dict = nxst.summary_statistic_over_attributes(
+                attributes = attributes_to_min,
+                summary_statistic = "min",
+                append_statistic_name=True,
+                G=G_stat,
+                return_df=False,
+            )
+
+
+            starting_coordinate_dict = nxst.starting_coordinate(G_stat,return_dict = True)
+            bbox_dict = nxst.skeleton_bounding_box(G_stat,return_dict = True)
+
+            relative_bbox_dict = nxst.skeleton_bounding_box(
+                G_stat,
+                soma_relative=True,
+                return_dict=True,
+                soma_center = soma_center)
+            relative_bbox_dict = {f"{k}_soma_relative":v for k,v in relative_bbox_dict.items()}
+
+            data_dict = gu.merge_dicts([
+                data_dict,
+                attributes_to_sum_dict,
+                attributes_to_mean_dict,
+                attributes_to_max_dict,
+                attributes_to_min_dict,
+                starting_coordinate_dict,
+                bbox_dict,
+                relative_bbox_dict
+
+                ])
+
+            data_dict = {f"{prefix}{k}":v for k,v in data_dict.items()}
+
+        all_data_dicts.append(data_dict)
+
+    all_data_dicts = gu.merge_dicts(all_data_dicts)
+    
+    if attributes_to_divide is not None:
+        for att,divisor in attributes_to_divide.items():
+            for k,v in all_data_dicts.items():
+                if att in k:
+                    all_data_dicts[k] = all_data_dicts[k]/divisor
+                
+    return all_data_dicts
 
 
 

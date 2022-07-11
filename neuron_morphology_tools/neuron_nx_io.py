@@ -602,6 +602,7 @@ def compressed_dict_from_G(
     dense_adjacency = True,
     data_name = "data"
     ):
+    
     g_atts = xu.graph_attr_dict(G)
     curr_dict = {k:g_atts[k] for k in graph_identifiers}
     curr_dict[data_name] = xu.adjacency_feature_info(
