@@ -615,5 +615,95 @@ def compressed_dict_from_G(
     
     return curr_dict
 
+import numpy_utils as nu
+import copy
+def combine_limb_graph_data(
+    graph_data,
+    limb_idx,
+    return_cluster_matrix = True,
+    flat_cluster_matrix = True,
+    verbose = False,
+    max_nodes = 250,
+    max_limbs = 25,
+    limb_attributes_to_add = None,
+    ):
+
+    all_graph_data = copy.deepcopy(graph_data)
+
+    n_nodes = np.sum([len(k["data"]["nodelist"]) for k in all_graph_data ])
+    
+    if verbose:
+        print(f"n_nodes = {n_nodes}")
+
+    node_count = 0
+    nodelist = []
+    adjacency_edges = []
+    features_list = []
+    all_edges = 0
+
+
+    big_adj = np.zeros((n_nodes,n_nodes)).astype('int')
+    
+    if not flat_cluster_matrix:
+        clust_matrix = np.zeros((max_limbs,max_nodes)).astype("int")
+    else:
+        clust_matrix = np.zeros(n_nodes).astype("int")
+
+    for j,l_idx in enumerate(limb_idx):
+        g = all_graph_data[j]["data"]
+        curr_n_nodes = len(g["nodelist"])
+
+
+        adj_matrix = g["adjacency"]
+        big_adj[node_count:node_count+curr_n_nodes,node_count:node_count+curr_n_nodes] = adj_matrix
+
+        if verbose:
+            print(node_count,node_count+curr_n_nodes)
+            print(f"adj_matrix = \n{adj_matrix}")
+
+        curr_features = g["feature_matrix"]
+        if limb_attributes_to_add is not None:
+            curr_array = np.array([v[j] for v in limb_attributes_to_add.values()])
+            features_values = np.tile(
+                curr_array,
+                (len(curr_features),1)
+            )
+            #print(f"curr_features.shape ={curr_features.shape}")
+            curr_features = np.hstack([curr_features,features_values])
+
+
+        features_list.append(curr_features)
+        nodelist.append(g["nodelist"])
+
+        if not flat_cluster_matrix:
+            clust_matrix[j,node_count:node_count+curr_n_nodes] = 1/curr_n_nodes
+        else:
+            clust_matrix[node_count:node_count+curr_n_nodes] = j
+            
+        node_count += curr_n_nodes
+
+    nodelist = np.hstack(nodelist)
+    features_list = np.vstack(features_list)
+    
+    
+    new_graph_data = all_graph_data[0].copy()
+    fnames = new_graph_data["data"]["features"]
+    if limb_attributes_to_add is not None:
+        features_names = list(limb_attributes_to_add.keys())
+        fnames += features_names
+    
+
+    # put back into one giant graph data
+    
+    new_graph_data["data"]["feature_matrix"] = nu.replace_nan_with_zero(features_list)
+    new_graph_data["data"]["nodelist"] = nodelist
+    new_graph_data["data"]["adjacency"] = big_adj
+    new_graph_data["data"]["features"] = fnames
+    
+    if return_cluster_matrix:
+        return new_graph_data,clust_matrix
+    else:
+        return new_graph_data
+
 
 import neuron_nx_io as nxio

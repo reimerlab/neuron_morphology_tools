@@ -60,9 +60,17 @@ def add_node_feature(
 #         print(f"feature functions")
 #         print(f"{[k.__name__ for k in feature_func]}")
         
+    def default_func(*args,**kwargs):
+        return default_value
+    
     for att_func in feature_func:
         if "str" in str(type(att_func)):
-            att_func = getattr(nxf,att_func)
+            try:
+                att_func = getattr(nxf,att_func)
+            except:
+#                 feature_name = att_func
+#                 att_func = default_func
+                continue
             
         if feature_name is None:
             curr_name = str(att_func.__name__)
@@ -281,6 +289,7 @@ def add_any_missing_node_features(
     features=None,
     verbose = False,
     inplace = False,
+    #default_value = 0,
     ):
     """
     Purpose:
@@ -300,7 +309,8 @@ def add_any_missing_node_features(
         G,
         feature_func=features_not_computed,
         verbose = verbose,
-        inplace = inplace
+        inplace = inplace,
+        #default_value=default_value
     )
 
     return G_new

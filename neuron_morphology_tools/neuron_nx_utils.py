@@ -318,6 +318,9 @@ def remove_small_starter_branches(
         verbose = verbose,
         skeletal_length_min = skeletal_length_min,
         **kwargs)
+    
+    if verbose:
+        print(f"Soma Starter Branches = {sm_st_branches}")
 
 #     for s_b in sm_st_branches:
 # #         if verbose:
@@ -591,6 +594,7 @@ def axon_dendrite_subgraph(
     compartment,
     include_soma = True,
     verbose = False,
+    remove_node_method = True,
     ):
     
     compartment_nodes =  list(axon_dendrite_nodes(
@@ -604,7 +608,14 @@ def axon_dendrite_subgraph(
     if include_soma:
         compartment_nodes.append(nxu.soma_node_name_global)
         
-    return G.subgraph(compartment_nodes).copy()
+    if remove_node_method:
+        nodes_to_remove = np.setdiff1d(list(G.nodes()),compartment_nodes)
+        return nxu.remove_node(
+            G,
+            nodes_to_remove,
+        )
+    else:
+        return G.subgraph(compartment_nodes).copy()
         
 def axon_subgraph(
     G,
@@ -680,6 +691,8 @@ def all_limb_graphs_off_soma(G,verbose = False):
         xu.remove_nodes_from(G,[nxu.soma_node_name_global]
                             )
     )
+    if verbose:
+        print(f"components = {components}")
     
     return_graphs = [G.subgraph(subgraph_nodes).copy()
                      for subgraph_nodes in components]
@@ -2370,11 +2383,24 @@ def filter_graph(
     5) Filter into soma 
     6) Turn into non-directed graph
     """
+    debug = False
+    verbose_soma_conn = False
+    
     if features_to_output is None:
         features_to_output = nxf.features_to_output_for_gnn
     
+    if debug:
+        print('L0_123' in G)
+    
     #1) Reduces to only dendrite subgraph
     G = nxu.dendrite_subgraph(G)
+    
+    if debug:
+        print('L0_123' in G)
+            
+    
+    if verbose_soma_conn:
+        print(f"Soma connected nodes = {nxu.soma_connected_nodes(G)}")
     
     #2) Removes any small starter nodes
     if remove_starter_branches:
@@ -2384,6 +2410,12 @@ def filter_graph(
             maintain_skeleton_connectivity = True)
     else:
         G_filt = G
+        
+    if debug:
+        print('L0_123' in G_filt)
+        
+    if verbose_soma_conn:
+        print(f"After remove starter branches: Soma connected nodes = {nxu.soma_connected_nodes(G_filt)}")
         
     #3) Restricts to a certain distance
     if distance_threshold is not None:
@@ -2396,6 +2428,9 @@ def filter_graph(
     else:
         G_dist_filt = G_filt
         
+    if verbose_soma_conn:
+        print(f"After dist threshold: Soma connected nodes = {nxu.soma_connected_nodes(G_dist_filt)}")
+        
     if distance_threshold_min is not None:
         G_dist_filt = nxu.nodes_farther_than_distance_from_soma(
             G_dist_filt,
@@ -2404,6 +2439,9 @@ def filter_graph(
             return_subgraph = True,
             distance_type = "downstream",
         )
+        
+    if verbose_soma_conn:
+        print(f"After dist threshold min: Soma connected nodes = {nxu.soma_connected_nodes(G_dist_filt)}")
         
 
     #4) Filter to certain features
@@ -2418,6 +2456,9 @@ def filter_graph(
                 )
     else:
         G_with_feats = G_dist_filt
+    
+    if verbose_soma_conn:
+        print(f"After filter_G_features: Soma connected nodes = {nxu.soma_connected_nodes(G_dist_filt)}")
     
     
     if filter_away_soma:
