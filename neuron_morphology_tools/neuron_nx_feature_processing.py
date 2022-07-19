@@ -367,6 +367,13 @@ features_to_output_for_gnn = [
     'spine_volume_sum',
     
 ]
+
+features_hierarchical = [
+    "soma_start_angle_max",
+    "max_soma_volume",
+    "n_syn_soma"]
+
+features_to_output_for_gnn_hierarchical = features_to_output_for_gnn + features_hierarchical
     
 
 def filter_G_features(
