@@ -704,6 +704,170 @@ def combine_limb_graph_data(
         return new_graph_data,clust_matrix
     else:
         return new_graph_data
+    
+    
+    
+from tqdm_utils import tqdm
+import neuron_nx_io as nxio
+import pandas as pd
+
+def neuron_df_for_train_from_limb_df(
+    df,
+    sort_attributes = None,#("soma_start_angle_max",)
+    limb_attributes_to_add_to_branches = (
+        "soma_start_angle_max",
+        "max_soma_volume",
+        "n_syn_soma"
+        ),
+    
+    add_pool_suffix = True,
+    
+    node_weight_name = "skeletal_length",
+    edge_weight = False,
+    edge_weight_method = "max",
+    
+    
+    #--- for hierarchical ---
+    export_pool1_clusters = True,
+    
+    hierarchical = False,
+    attributes_pool1 = ("soma_start_angle_max",),
+    attributes_pool2 = (
+        "max_soma_volume",
+        "n_syn_soma",
+    ),
+    graph_type = "binary_tree",#"complete_graph"
+    verbose =False,
+    ):
+    
+    if attributes_pool1 is not None:
+        attributes_pool1 = list(attributes_pool1)
+    else:
+        attributes_pool1 = []
+    
+    if attributes_pool2 is not None:
+        attributes_pool2 = list(attributes_pool2)
+    else:
+        attributes_pool2 = []
+
+    if hierarchical:
+        limb_attributes_to_add_to_branches = np.setdiff1d(
+            limb_attributes_to_add_to_branches,np.union1d(attributes_pool1,attributes_pool2)
+        )
+    
+    unique_seg_split = pu.filter_to_first_instance_of_unique_column(
+        df[["segment_id","split_index"]],
+        column_name=["segment_id","split_index"]
+    )
+    
+    if edge_weight:
+        add_self_loops = True
+    else:
+        add_self_loops = False
+
+    new_dicts = []
+    segs_splits = unique_seg_split.index.to_numpy()
+    for segment_id,split_index in tqdm(segs_splits):
+        curr_df = df.query(f"(segment_id=={segment_id}) and (split_index == {split_index})")
+
+        if sort_attributes is not None:
+            curr_df = pu.sort_df_by_column(
+                curr_df,
+                columns=sort_attributes)
+
+        limb_idx = curr_df["limb_idx"].to_numpy()    
+
+        if limb_attributes_to_add_to_branches is not None and len(limb_attributes_to_add_to_branches) > 0:
+            limb_attributes_to_add = {
+                f:curr_df[f].to_numpy() for f in limb_attributes_to_add_to_branches
+            }
+        else:
+            limb_attributes_to_add = None
+
+        graph_data,clust_matrix = nxio.combine_limb_graph_data(
+            graph_data = curr_df["graph_data"].to_list(),
+            limb_idx = limb_idx,
+            limb_attributes_to_add=limb_attributes_to_add
+        )
+        
+        if add_pool_suffix or hierarchical:
+            suffix = "_pool0"
+        else:
+            suffix = ""
+
+        ex_dict = pu.df_to_dicts(curr_df.iloc[:1,:])[0]
+        ex_dict[f"names{suffix}"] = graph_data["data"]["nodelist"]
+        ex_dict[f"x_features{suffix}"] = graph_data["data"]["features"]
+        ex_dict[f"x{suffix}"] = graph_data["data"]["feature_matrix"]
+        ex_dict[f"edge_index{suffix}"] = nu.edge_list_from_adjacency_matrix(
+            graph_data["data"]["adjacency"],
+            add_self_loops=add_self_loops)
+        
+        sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
+        weight_values = ex_dict[f"x{suffix}"][:,sk_length_idx].astype("float")
+        
+        if node_weight_name is not None:
+            ex_dict[f"node_weight{suffix}"] = weight_values
+            
+        if edge_weight:
+            if len(ex_dict[f"edge_index{suffix}"]) > 0:
+                ex_dict[f"edge_weight{suffix}"] = getattr(np,edge_weight_method)(
+                    weight_values[ex_dict[f"edge_index{suffix}"]],axis=1
+                ).astype("float")
+            else:
+                ex_dict[f"edge_weight{suffix}"] = np.array([]).astype('float')
+            
+            
+        if hierarchical or export_pool1_clusters:
+            ex_dict["pool1_names"] = limb_idx
+            ex_dict["pool1"] = clust_matrix
+
+        # ---- adding on all of the extra components for heirarchical pooling ------
+        
+        if hierarchical:
+            if len(attributes_pool1) > 0:
+                shape = (-1,len(attributes_pool1))
+            else:
+                shape = (1,0)
+            ex_dict["x_pool1"] = curr_df[attributes_pool1].to_numpy().reshape(*shape)
+            ex_dict["x_features_pool1"] =  attributes_pool1
+            ex_dict["edge_index_pool1"] = xu.edge_list_from_graph_type(
+                n=len(limb_idx),
+                graph_type=graph_type,
+                plot=False,
+                add_self_loops=add_self_loops,
+            )
+            
+            weight_values = curr_df[node_weight_name].to_numpy().astype("float")
+        
+            if node_weight_name is not None:
+                ex_dict[f"node_weight_pool1"] = weight_values
+
+            if edge_weight:
+                if len(ex_dict[f"edge_index_pool1"]) > 0:
+                    ex_dict[f"edge_weight_pool1"] = getattr(np,edge_weight_method)(
+                        weight_values[ex_dict[f"edge_index_pool1"]],axis=1
+                    ).astype("float")
+                else:
+                    ex_dict[f"edge_weight_pool1"] = np.array([]).astype('float')
+
+
+            #ex_dict["x_pool2"] = curr_df[attributes_pool2].to_numpy()
+            if len(attributes_pool2) > 0:
+                shape = (-1,len(attributes_pool2))
+            else:
+                shape = (1,0)
+            ex_dict["x_pool2"] = curr_df[attributes_pool2].iloc[0,:].to_numpy().reshape(*shape)
+            ex_dict["x_features_pool2"] =  attributes_pool2
+            
+            
+        del ex_dict["graph_data"]
+
+        new_dicts.append(ex_dict)
+
+
+    df_with_labels = pd.DataFrame.from_records(new_dicts)
+    return df_with_labels
 
 
 import neuron_nx_io as nxio
