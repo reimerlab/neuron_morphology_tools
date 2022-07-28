@@ -2555,6 +2555,31 @@ def soma_center(G,use_most_upstream_as_backup = True):
             return G.nodes[nxu.most_upstream_node(G)]["endpoint_upstream"]
         except:
             return None
+        
+        
+import neuron_nx_utils as nxu
+def starting_coordinates_all_limbs(
+    G,
+    verbose=False):
+    """
+    Purpose: To get all of the limb starting coordinates
+
+    Pseudocode: 
+    2) Get all those bordering the soma
+    3) Assemble the starting coordinates
+    """
+    soma_conn_nodes = nxu.soma_connected_nodes(G)
+    if len(soma_conn_nodes) > 0:
+        starting_coordinates = np.vstack([G.nodes[k]["endpoint_upstream"] 
+                                for k in soma_conn_nodes])
+    else:
+        starting_coordinates = np.array([]).reshape(-1,3)
+        
+    if verbose:
+        print(f"starting_coordinates = {starting_coordinates}")
+        
+    return starting_coordinates
+
     
 
     
