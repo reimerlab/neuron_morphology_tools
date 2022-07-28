@@ -2498,15 +2498,18 @@ import numpy as np
 
 def skeleton(
     G,
+    include_soma = True,
     plot = False,
     verbose = False,
-    include_soma = True,
+    mesh = None,
+    return_verts_edges = True,
     ):
     
     skeleton_nodes = np.array([])
     skeleton_edges = np.array([])
 
     for node in nxu.limb_branch_nodes(G):
+        
         curr_nodes = G.nodes[node]["skeleton_data"]
         edges = np.vstack([np.arange(len(curr_nodes))[:-1],
                           np.arange(len(curr_nodes))[1:],]).T
@@ -2519,7 +2522,7 @@ def skeleton(
             skeleton_edges = edges
 
     # add on the soma edges if have them
-    if include_soma:
+    if include_soma and soma_node_name_global in G.nodes():
         soma_nodes,soma_edges = nxu.skeleton_soma_to_limb_start(G)
         if len(soma_edges) > 0:
             soma_edges += len(skeleton_nodes)
@@ -2527,10 +2530,21 @@ def skeleton(
         skeleton_edges = np.vstack([skeleton_edges,soma_edges])
 
     if plot:
+        new_figure = True
+        if mesh is not None:
+            ipvu.plot_mesh(
+                mesh,
+                new_figure=True,
+                show_at_end=False,
+                flip_y=True,
+                alpha = 0.1
+            )
+            new_figure = False,
         ipvu.plot_obj(
             array = skeleton_nodes,
             lines=skeleton_edges,
-            flip_y = True
+            flip_y = True,
+            new_figure = False,
 
         )
         
@@ -2538,7 +2552,10 @@ def skeleton(
         print(f"# of nodes = {len(skeleton_nodes)}")
         print(f"# of edges = {len(skeleton_edges)}")
         
-    return skeleton_nodes,skeleton_edges
+    if return_verts_edges:
+        return skeleton_nodes,skeleton_edges
+    else:
+        return skeleton_nodes[skeleton_edges]
 
 def skeleton_nodes(
     G,
@@ -2669,6 +2686,7 @@ def skeleton_width_compartment_arrays_from_G(
                 alpha=0.2,
                 flip_y = True,
                 show_at_end=False,
+                new_figure = True,
             )
             new_figure = False
             
@@ -2684,6 +2702,129 @@ def skeleton_width_compartment_arrays_from_G(
         
     return skeleton_array,width_array,compartment_array
 
+
+def nodes_between_soma_and_nodes(
+    G,
+    nodes,
+    verbose = False,
+    ):
+    """
+    Purpose: to find the nodes in between a set of nodes
+    and the soma node
+    
+    Ex: 
+    nxu.nodes_between_soma_and_nodes(
+        G_presyn,
+        nodes=["L0_5","L0_7"],
+        verbose = True
+    )
+    """
+    if "str" in str(type(nodes)):
+        nodes = getattr(nxu,f"{nodes}_nodes")(G)
+    nodes = nu.convert_to_array_like(nodes)
+    path,_,end_node = xu.shortest_path_between_two_sets_of_nodes(
+        G,
+        [nxu.soma_node_name_global],
+        nodes,
+
+    )
+
+    in_between_nodes = path[1:-1]
+    if verbose:
+        print(f"in_between_nodes = {in_between_nodes}, closest node to soma = {end_node}")
+
+    return in_between_nodes
+
+def compartment_nodes(
+    G,
+    compartment,
+    verbose = False):
+    """
+    Ex: nxu.compartment_nodes(G_presyn,"apical_shaft")
+    """
+    compartment = nu.convert_to_array_like(compartment)
+    nodes = []
+    for k in nxu.limb_branch_nodes(G):
+        comp_reg = nxu.compartment_from_node(G,k,replace_underscore=False)
+        comp = nxu.compartment_from_node(G,k)
+        if len(np.intersect1d(compartment,[comp_reg,comp])) > 0:
+            nodes.append(k)
+    if verbose:
+        print(f"{compartment} nodes = {nodes}")
+        
+    return nodes
+
+def compartment_subgraph(
+    G,
+    compartment,
+    include_path_to_soma=False,
+    verbose = False,
+    plot = False,):
+    """
+    Purpose: To get the axon skeleton
+    (and optionally the skeleton in between axon and soma)
+
+
+    """
+    nodes = nxu.compartment_nodes(G,compartment)
+    
+    if verbose:
+        print(f"{compartment} nodes = {nodes}")
+
+    if include_path_to_soma:
+        new_nodes = list(nxu.nodes_between_soma_and_nodes(
+            G,
+            nodes=nodes,
+        ))
+
+        if verbose:
+            print(f"Non axon nodes added on path to soma = {new_nodes}")
+
+        nodes += new_nodes
+
+    G_sub = G.subgraph(nodes).copy()
+    return G_sub
+
+def compartment_skeleton(
+    G,
+    compartment,
+    include_path_to_soma=False,
+    include_soma = False,
+    verbose = False,
+    plot = False,
+    **kwargs):
+    
+    sub_G = nxu.compartment_subgraph(
+        G,
+        compartment,
+        include_path_to_soma=include_path_to_soma,
+        verbose = verbose,
+        plot = False,
+    )
+    return nxu.skeleton(
+        sub_G,
+        include_soma = include_soma,
+        plot = plot,
+        **kwargs
+    )
+
+def axon_skeleton(
+    G,
+    include_path_to_soma=False,
+    verbose = False,
+    plot = False,
+    **kwargs
+    ):
+    
+    return nxu.compartment_skeleton(
+    G,
+    compartment="axon",
+    include_path_to_soma=include_path_to_soma,
+    include_soma = False,
+    verbose = verbose,
+    plot = plot,
+    **kwargs)
+    
     
 
 import neuron_nx_utils as nxu
