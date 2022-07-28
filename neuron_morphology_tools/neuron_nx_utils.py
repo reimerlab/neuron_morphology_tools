@@ -1726,15 +1726,21 @@ def soma_only_graph(
         return False
     
 # --------- For outputing graph attributes --------
-def compartment_from_node(G,n=None):
+def compartment_from_node(
+    G,
+    n=None,
+    replace_underscore = True):
     """
     Purpose: To get the compartment from
     a node in a graph
     """
     if "graph" in str(type(G)).lower():
         G = G.nodes[n]
-        
-    return G["compartment"].replace("_","")
+     
+    comp = G["compartment"]
+    if replace_underscore:
+        comp = comp.replace("_","")
+    return comp
 
 def width_from_node(
     G,
@@ -2580,7 +2586,103 @@ def starting_coordinates_all_limbs(
         
     return starting_coordinates
 
+def skeleton_width_data_from_node(
+    G,
+    n,
+    skeleton_midpoints = False,
+    width_to_repeat = "last",
+    ):
+    """
+    Purpose: To get the skeleton data and 
+    the width associated with each skeleton point
+    """
+    node_data = G.nodes[n]
+
+    skeleton_points = node_data["skeleton_data"]
+    width_array = np.array([k["width"] for k in node_data["width_data"]])
+    if skeleton_midpoints:
+        skeleton_points = (skeleton_points[1:]+skeleton_points[:-1])/2
+    else:
+        if width_to_repeat == "last":
+            repeat_index = -1
+        elif width_to_repeat == "first":
+            repeat_index = 0
+
+        width_array = np.hstack([width_array,[width_array[repeat_index]]])
+
+    assert len(skeleton_points) == len(width_array)
+    return skeleton_points,width_array
+
+import mesh_utils as meshu
+import numpy_utils as nu
+def skeleton_width_compartment_arrays_from_G(
+    G,
+    compartments = None,
+    replace_underscore_in_compartments = False,
+    plot = False,
+    mesh = None,
+    **kwargs
+    ):
+    """
+    Purpose: To extract the skeleton,width,compartment
+    arrays from a neuron object
     
+    segment_id = 864691136422863407
+    split_index = 0
+    G = hdju.graph_obj_from_proof_stage(segment_id,split_index)
+    mesh = hdju.fetch_proofread_mesh(segment_id)
+
+    nxu.skeleton_width_compartment_arrays_from_G(
+        G,
+        plot = True,
+        mesh = mesh)
+    """
+
+    skeleton_array = []
+    width_array = []
+    compartment_array = []
+
+    for n in nxu.limb_branch_nodes(G):
+        skel_data,width_data = nxu.skeleton_width_data_from_node(
+            G,
+            n = n,
+            **kwargs)
+        comp = nxu.compartment_from_node(G,n,replace_underscore=replace_underscore_in_compartments)
+        if compartments is not None:
+            if comp not in compartments:
+                continue
+        comp_data = np.repeat([comp],len(skel_data))
+
+        skeleton_array.append(skel_data)
+        width_array.append(width_data)
+        compartment_array.append(comp_data)
+
+    skeleton_array = np.vstack(skeleton_array)
+    width_array = np.hstack(width_array)
+    compartment_array = np.hstack(compartment_array)
+    
+    if plot:
+        new_figure = True
+        if mesh is not None:
+            new_mesh = ipvu.plot_mesh(
+                mesh,
+                alpha=0.2,
+                flip_y = True,
+                show_at_end=False,
+            )
+            new_figure = False
+            
+        scat_mesh = meshu.scatter_mesh_with_radius(skeleton_array,width_array)
+        new_mesh = ipvu.plot_mesh(
+            scat_mesh,
+            alpha=1,
+            color = "red",
+            flip_y = True,
+            new_figure = new_figure,
+            show_at_end=True,
+        )        
+        
+    return skeleton_array,width_array,compartment_array
 
     
 
