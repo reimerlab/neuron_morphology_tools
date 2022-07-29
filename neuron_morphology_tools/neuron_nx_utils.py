@@ -2539,7 +2539,7 @@ def skeleton(
                 flip_y=True,
                 alpha = 0.1
             )
-            new_figure = False,
+            new_figure = False
         ipvu.plot_obj(
             array = skeleton_nodes,
             lines=skeleton_edges,
@@ -2738,6 +2738,7 @@ def nodes_between_soma_and_nodes(
 def compartment_nodes(
     G,
     compartment,
+    include_path_to_soma=False,
     verbose = False):
     """
     Ex: nxu.compartment_nodes(G_presyn,"apical_shaft")
@@ -2751,6 +2752,17 @@ def compartment_nodes(
             nodes.append(k)
     if verbose:
         print(f"{compartment} nodes = {nodes}")
+        
+    if include_path_to_soma:
+        new_nodes = list(nxu.nodes_between_soma_and_nodes(
+            G,
+            nodes=nodes,
+        ))
+
+        if verbose:
+            print(f"Non axon nodes added on path to soma = {new_nodes}")
+            
+        nodes += new_nodes
         
     return nodes
 
@@ -2766,21 +2778,12 @@ def compartment_subgraph(
 
 
     """
-    nodes = nxu.compartment_nodes(G,compartment)
+    nodes = nxu.compartment_nodes(
+        G,compartment,include_path_to_soma=include_path_to_soma)
     
     if verbose:
         print(f"{compartment} nodes = {nodes}")
 
-    if include_path_to_soma:
-        new_nodes = list(nxu.nodes_between_soma_and_nodes(
-            G,
-            nodes=nodes,
-        ))
-
-        if verbose:
-            print(f"Non axon nodes added on path to soma = {new_nodes}")
-
-        nodes += new_nodes
 
     G_sub = G.subgraph(nodes).copy()
     return G_sub
@@ -2824,7 +2827,121 @@ def axon_skeleton(
     verbose = verbose,
     plot = plot,
     **kwargs)
+
+
+def coordinate_estimation_from_upstream_dist_from_node(
+    G,
+    n,
+    attribute= "spine_data",
+    ):
+    """
+    Purpose: To estimate the coordinates of the a data
+    attribute with an upstream distance
+
+    Pseudocode: 
+    1) Get the skeleton and calculate the distance between each
+    2) Get the cumulative distance
+    3) Find the two skeleton points it's in between
+    4) Do a weighted average of the skeleton points after subtracting the cumulative distance
     
+    Ex: 
+    nxu.coordinate_estimation_from_upstream_dist_from_node(
+        G_postsyn,
+        "L1_6"
+    ).shape
+
+
+    """
+    if "_data" not in attribute:
+        attribute = f"{attribute}_data"
+
+    node_data = G.nodes[n]
+    sk_verts = node_data["skeleton_data"]
+    spine_upstream = np.array([k["upstream_dist"] for k in node_data["spine_data"]])
+
+    if len(spine_upstream) > 0:
+        dists = np.linalg.norm(sk_verts[1:] - sk_verts[:-1],axis=1)
+        bins = np.hstack([[0],np.cumsum(dists)])
+
+        highest_bound = np.digitize(spine_upstream,bins)
+        highest_bound[highest_bound >= len(bins)] = len(bins) - 1
+        highest_bound[highest_bound <= 0] = 1
+
+        # do the weighted average of the to get the actual distance
+        dist_from_up = bins[highest_bound] - spine_upstream
+        dist_from_down = spine_upstream - bins[highest_bound - 1]
+        up_weight = dist_from_up/(dist_from_up+dist_from_down)
+        down_weight = 1- up_weight
+
+        spine_shaft_coords = sk_verts[highest_bound]*up_weight.reshape(-1,1) + sk_verts[highest_bound-1]*down_weight.reshape(-1,1)
+    else:
+        spine_shaft_coords = np.array([]).reshape(-1,3)
+
+    return spine_shaft_coords
+
     
+# purpose: Get the spine data in the area
+def spine_shaft_coordinates(
+    G,
+    verbose = False,
+    plot = False,
+    mesh = None):
+    """
+    Purpose: Get all of the spine coordinates (located on the shaft)
+    """
+
+    spine_coordinates = []
+    for n in nxu.limb_branch_nodes(G):
+        spine_coordinates.append(
+            nxu.coordinate_estimation_from_upstream_dist_from_node(G,n)
+        )
+
+    spine_coordinates = np.vstack(spine_coordinates)
+    
+    if verbose:
+        print(f"# of spine coordinates = {len(spine_coordinates)}")
+        
+    if plot:
+        new_figure = True
+        if mesh is not None:
+            ipvu.plot_mesh(
+                mesh,
+                new_figure=True,
+                show_at_end=False,
+                flip_y=True,
+                alpha = 0.25,
+            )
+            new_figure = False
+        ipvu.plot_obj(
+            array = spine_coordinates,
+            flip_y = True,
+            new_figure = new_figure,
+        )
+        
+    return spine_coordinates
+
+def most_upstream_node_on_axon_limb(
+    G,
+    return_endpoint_upstream=False,
+    verbose = False,
+    ):
+
+    node = nxu.most_upstream_node(
+        G,
+        nxu.compartment_nodes(
+        G,
+        compartment="axon",
+        include_path_to_soma=True
+        )
+    )
+    
+    if verbose:
+        print(f"Most upstream node on axon branch = {node}")
+    if return_endpoint_upstream:
+        return G.nodes[node]["endpoint_upstream"]
+    else:
+        return node
+    
+
 
 import neuron_nx_utils as nxu
