@@ -2870,6 +2870,12 @@ def coordinate_estimation_from_upstream_dist_from_node(
         # do the weighted average of the to get the actual distance
         dist_from_up = bins[highest_bound] - spine_upstream
         dist_from_down = spine_upstream - bins[highest_bound - 1]
+        denom = dist_from_up+dist_from_down
+        
+        #makes sure no zero denominator values
+        dist_from_up[denom == 0] = 1
+        denom[denom == 0] = 1
+
         up_weight = dist_from_up/(dist_from_up+dist_from_down)
         down_weight = 1- up_weight
 
@@ -2942,6 +2948,12 @@ def most_upstream_node_on_axon_limb(
     else:
         return node
     
+def skeleton_graph(
+    G,
+    graph_type="Graph"):
+    import skeleton_utils as sk
+    verts,edges = nxu.skeleton(G_obj)
+    return sk.graph_from_non_unique_vertices_edges(verts,edge)
 
 
 import neuron_nx_utils as nxu
