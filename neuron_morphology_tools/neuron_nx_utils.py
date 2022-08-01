@@ -2608,6 +2608,7 @@ def skeleton_width_data_from_node(
     n,
     skeleton_midpoints = False,
     width_to_repeat = "last",
+    
     ):
     """
     Purpose: To get the skeleton data and 
@@ -2664,6 +2665,10 @@ def skeleton_width_compartment_arrays_from_G(
             G,
             n = n,
             **kwargs)
+        
+        if np.any(width_data > 1000000):
+            raise Exception(f"{n}")
+            
         comp = nxu.compartment_from_node(G,n,replace_underscore=replace_underscore_in_compartments)
         if compartments is not None:
             if comp not in compartments:
@@ -2954,6 +2959,126 @@ def skeleton_graph(
     import skeleton_utils as sk
     verts,edges = nxu.skeleton(G_obj)
     return sk.graph_from_non_unique_vertices_edges(verts,edge)
+
+def fix_attribute(G,
+        attribute="spine",
+        verbose = False):
+    
+    attribute = nu.convert_to_array_like(attribute)
+        
+    for n in G.nodes():
+        if "s" in n.lower():
+            continue
+        for a in attribute:
+            f_name = f"n_{a}s"
+            G.nodes[n][f_name] = len(G.nodes[n].get(f"{a}_data",[]))
+
+    return G
+
+def fix_flipped_skeleton(
+    G,
+    verbose = False,):
+    
+    """
+    Purpose: To fix the skeleton data
+    in Graph objects if they are
+    not aligned correctly
+
+    Ex: 
+    segment_id,split_index = 864691135162621741,0
+
+    G_obj = hdju.graph_obj_from_auto_proof_stage(
+        segment_id=segment_id,
+        split_index=split_index,
+    )
+
+    G_obj = fix_flipped_skeletons(G_obj,verbose = True)
+    """
+
+    node_flipped = []
+    for n in G.nodes():
+        if "s" in n.lower():
+            continue
+        curr_dict = G.nodes[n]
+        if len(curr_dict) == 0:
+            continue
+        endpt_up = curr_dict["endpoint_upstream"]
+        sk_up = curr_dict["skeleton_data"][0]
+        if not np.array_equal(endpt_up,sk_up):
+            G.nodes[n]["skeleton_data"] = np.flip(curr_dict["skeleton_data"],axis=0)
+            node_flipped.append(n)
+
+    if verbose:
+        print(f"Nodes with skeleton flipped: {node_flipped}")
+
+    return G
+
+import networkx_utils as xu
+
+def upstream_limb_branch(G,n):
+    up_node = xu.upstream_node(G,n)
+    if "S" in up_node:
+        return None
+    else:
+        return up_node
+    
+def downstream_limb_branch(G,n):
+    d_node = xu.downstream_nodes(G,n)
+    if len(d_node) == 0:
+        return None
+    else:
+        return d_node
+    
+def fix_width_inf_nan(
+    G,
+    default_value = 300,
+    verbose = False,):
+
+
+    """
+    Purpose: to replace all inf width values in node
+    with either the upstream, downstream width, or default value
+
+    Pseudocode: 
+    1a) Try and get an upstream width
+    1b) Try and get a downstream width
+    1c) Use the default width
+    2) Go and replace all width values and in the width array
+    with the default value
+
+    Width values to replace: 
+    - width (scalar)
+    - width_new (a dictionary)
+    - width_upstream (scalar)
+    - width_downstream (scalar)
+    - width_data: list of dict with width as key
+
+    """
+    nodes_fixed = []
+    for n in nxu.limb_branch_nodes(G):
+        if nu.is_nan_or_inf(G.nodes[n]["width"]):
+            nodes_fixed.append(n)
+            #1a) Try and get an upstream width
+            up_node = nxu.upstream_limb_branch(G,n)
+            new_width = default_value
+            if up_node is not None:
+                new_width = G.nodes[up_node]["width_new"]["no_spine_median_mesh_center"]
+            else:
+                d_nodes = nxu.downstream_limb_branch(G,n)
+                if d_nodes is not None:
+                    new_width = np.mean([G.nodes[k]["width_new"]["no_spine_median_mesh_center"] for k in d_nodes])
+
+            # do the replacement of all the width values
+            G.nodes[n]["width"] =new_width
+            G.nodes[n]["width_new"] = {k:new_width for k in G.nodes[n]["width_new"]}
+            G.nodes[n]["width_upstream"] =new_width
+            G.nodes[n]["width_downstream"] =new_width
+            for k in G.nodes[n]["width_data"]:
+                k["width"] = new_width
+
+    if verbose:
+        print(f"nodes_fixed = {nodes_fixed}")
+    return G  
 
 
 import neuron_nx_utils as nxu

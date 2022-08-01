@@ -732,6 +732,7 @@ def neuron_df_for_train_from_limb_df(
     
     hierarchical = False,
     attributes_pool1 = ("soma_start_angle_max",),
+    attributes_pool1_extra = None,
     attributes_pool2 = (
         "max_soma_volume",
         "n_syn_soma",
@@ -825,6 +826,7 @@ def neuron_df_for_train_from_limb_df(
         # ---- adding on all of the extra components for heirarchical pooling ------
         
         if hierarchical:
+            
             if len(attributes_pool1) > 0:
                 shape = (-1,len(attributes_pool1))
             else:
@@ -850,7 +852,13 @@ def neuron_df_for_train_from_limb_df(
                     ).astype("float")
                 else:
                     ex_dict[f"edge_weight_pool1"] = np.array([]).astype('float')
-
+            
+            # adding on extra features to carry with
+            if attributes_pool1_extra is not None:
+                shape = (-1,len(attributes_pool1_extra))
+                ex_dict["x_pool1_extra"] = curr_df[attributes_pool1_extra].to_numpy().reshape(*shape)
+                ex_dict["x_features_pool1_extra"] =  attributes_pool1_extra
+            
 
             #ex_dict["x_pool2"] = curr_df[attributes_pool2].to_numpy()
             if len(attributes_pool2) > 0:
