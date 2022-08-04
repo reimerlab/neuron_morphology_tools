@@ -710,7 +710,86 @@ def combine_limb_graph_data(
 from tqdm_utils import tqdm
 import neuron_nx_io as nxio
 import pandas as pd
+import copy
 
+def limb_df_for_train_from_limb_df(
+    df,
+    limb_attributes_to_add_to_branches = (
+        "soma_start_angle_max",
+        "max_soma_volume",
+        "n_syn_soma"
+        ),
+    node_weight_name = "skeletal_length",
+    edge_weight = False,
+    edge_weight_method = "max",
+    
+    add_pool_suffix = True,
+    verbose = False,
+    
+    add_self_loops = False,
+    ):
+    
+    if add_pool_suffix:
+        suffix = "_pool0"
+    else:
+        suffix = ""
+      
+    
+    new_dicts = []
+    all_dicts = pu.df_to_dicts(df)
+    for j,data in tqdm(enumerate(all_dicts)):
+#         if j > 50:
+#             break
+        graph_data = data["graph_data"]
+        ex_dict = dict()
+        ex_dict[f"names{suffix}"] = graph_data["data"]["nodelist"]
+    
+        # -- adding the new features and 
+        
+        if limb_attributes_to_add_to_branches is not None:
+            ex_dict[f"x_features{suffix}"] = np.concatenate([graph_data["data"]["features"],limb_attributes_to_add_to_branches])
+            
+            curr_array = np.array([data[k] for k in limb_attributes_to_add_to_branches])
+            ex_dict[f"x{suffix}"] = np.hstack([
+                graph_data["data"]["feature_matrix"],
+                np.tile(
+                    curr_array,
+                    (len(graph_data["data"]["feature_matrix"]),1))
+            ])
+        else:
+            ex_dict[f"x_features{suffix}"] = graph_data["data"]["features"]
+            ex_dict[f"x{suffix}"] = graph_data["data"]["feature_matrix"]
+            
+        ex_dict[f"x{suffix}"] = nu.replace_nan_with_zero( ex_dict[f"x{suffix}"])
+        
+        if np.any(np.isnan(ex_dict[f"x{suffix}"])):
+            raise Exception("")
+        
+        ex_dict[f"edge_index{suffix}"] = nu.edge_list_from_adjacency_matrix(
+            graph_data["data"]["adjacency"],
+            add_self_loops=add_self_loops)
+
+        sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
+        weight_values = ex_dict[f"x{suffix}"][:,sk_length_idx].astype("float")
+
+        if node_weight_name is not None:
+            ex_dict[f"node_weight{suffix}"] = weight_values
+
+        if edge_weight:
+            if len(ex_dict[f"edge_index{suffix}"]) > 0:
+                ex_dict[f"edge_weight{suffix}"] = getattr(np,edge_weight_method)(
+                    weight_values[ex_dict[f"edge_index{suffix}"]],axis=1
+                ).astype("float")
+            else:
+                ex_dict[f"edge_weight{suffix}"] = np.array([]).astype('float')
+        
+        new_dicts.append(ex_dict)
+    
+    df = pd.concat([df,pd.DataFrame.from_records(new_dicts)],axis=1)
+    return df
+        
+                
+    
 def neuron_df_for_train_from_limb_df(
     df,
     sort_attributes = None,#("soma_start_angle_max",)
@@ -719,6 +798,7 @@ def neuron_df_for_train_from_limb_df(
         "max_soma_volume",
         "n_syn_soma"
         ),
+    add_limb_attributes_to_branches_even_if_hierarchical=False,
     
     add_pool_suffix = True,
     
@@ -751,7 +831,7 @@ def neuron_df_for_train_from_limb_df(
     else:
         attributes_pool2 = []
 
-    if hierarchical:
+    if hierarchical and not add_limb_attributes_to_branches_even_if_hierarchical:
         limb_attributes_to_add_to_branches = np.setdiff1d(
             limb_attributes_to_add_to_branches,np.union1d(attributes_pool1,attributes_pool2)
         )
@@ -877,5 +957,52 @@ def neuron_df_for_train_from_limb_df(
     df_with_labels = pd.DataFrame.from_records(new_dicts)
     return df_with_labels
 
+
+import numpy_utils as nu
+import general_utils as gu
+def aggregate_embedding_df_by_seg_split(
+    df,
+    embed_cols,
+    decoder_map,
+    weight_by_skeleton = True,
+    
+    ):
+    """
+    Purpose: Want a combined embedding from all the limbs
+    """
+    import cell_type_utils as ctu
+    unique_seg_split = pu.filter_to_first_instance_of_unique_column(
+        df[["segment_id","split_index"]],
+        column_name=["segment_id","split_index"]
+    )
+
+    new_dicts = []
+    segs_splits = unique_seg_split.index.to_numpy()
+    for segment_id,split_index in tqdm(segs_splits):
+        curr_df = df.query(f"(segment_id=={segment_id}) and (split_index == {split_index})")
+        ex_dict = curr_df.iloc[0,:].to_dict()
+        skeletal_length = curr_df["skeletal_length"].to_numpy()
+
+        ex_dict["skeletal_length"] = sum(skeletal_length)
+
+        if weight_by_skeleton:
+            weights = skeletal_length
+        else:
+            weights = np.ones(skeletal_length.shape)
+
+        curr_embed = nu.weighted_average_along_axis(curr_df[embed_cols].to_numpy(),weights,axis=0)
+        new_embed_dict = {f"{k}_aggr":v for k,v in zip(embed_cols,curr_embed)}
+
+        winning_idx = np.argmax(curr_embed)
+        cell_type_dict = dict(
+            cell_type_predicted_aggr = decoder_map[winning_idx],
+            cell_type_predicted_prob_aggr = curr_embed[winning_idx],
+            e_i_predicted_aggr = ctu.allen_cell_type_fine_classifier_to_e_i_map[decoder_map[winning_idx]])
+
+        ex_dict = gu.merge_dicts([ex_dict,new_embed_dict,cell_type_dict])
+        new_dicts.append(ex_dict)
+
+    df_aggr = pd.DataFrame.from_records(new_dicts)
+    return df_aggr
 
 import neuron_nx_io as nxio
