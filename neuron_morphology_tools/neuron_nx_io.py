@@ -882,6 +882,7 @@ def neuron_df_for_train_from_limb_df(
         ex_dict[f"x{suffix}"] = graph_data["data"]["feature_matrix"]
         ex_dict[f"edge_index{suffix}"] = nu.edge_list_from_adjacency_matrix(
             graph_data["data"]["adjacency"],
+            bidirectional = True,
             add_self_loops=add_self_loops)
         
         sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
@@ -916,6 +917,7 @@ def neuron_df_for_train_from_limb_df(
             ex_dict["edge_index_pool1"] = xu.edge_list_from_graph_type(
                 n=len(limb_idx),
                 graph_type=graph_type,
+                bidirectional = True,
                 plot=False,
                 add_self_loops=add_self_loops,
             )
