@@ -818,8 +818,17 @@ def neuron_df_for_train_from_limb_df(
         "n_syn_soma",
     ),
     graph_type = "binary_tree",#"complete_graph"
+    add_density_to_graph_data = False,
     verbose =False,
     ):
+    
+    if add_density_to_graph_data:
+        df = nxio.add_density_to_graph_data_in_df(
+            df,
+            in_place = False,
+        )
+        
+    
     
     if attributes_pool1 is not None:
         attributes_pool1 = list(attributes_pool1)
@@ -1006,5 +1015,90 @@ def aggregate_embedding_df_by_seg_split(
 
     df_aggr = pd.DataFrame.from_records(new_dicts)
     return df_aggr
+
+def add_density_to_graph_data(
+    data,
+    verbose = False,
+    replace_features = False,
+    in_place = False,
+    ):
+    """
+    Purpose: To compute density features for all
+    features that 
+
+    1) Get the features to compute densities for
+    and the columns they will be derived from
+    2) Compute the densities
+    3) Either replace existing columns or append
+    """
+
+    if not in_place:
+        curr_graph_data = data.copy()
+    else:
+        curr_graph_data = data
+
+    feature_names = curr_graph_data["features"]
+    density_columns = dict()
+    for j,k in enumerate(feature_names):
+        if not("n_" == k[:2] or "sum" == k[-3:] and "density" not in k):
+            continue
+
+        if "n_" == k[:2]:
+            density_name = f"{k[2:]}_density"
+        else:
+            density_name = f"{k[:-4]}_density"
+
+        if density_name in feature_names:
+            continue
+
+        density_columns[density_name] = j
+
+
+    if verbose:
+        print(f"# of density_columns = {len(density_columns)}")
+
+    skeletal_col = np.where(np.array(feature_names) == "skeletal_length")[0][0]
+
+    if len(density_columns) > 0:
+        cols_to_compute = np.array(list(density_columns.values()))
+        feature_matrix_density = curr_graph_data["feature_matrix"][:,cols_to_compute]/curr_graph_data["feature_matrix"][:,[skeletal_col]]
+        features_density = np.array(list(density_columns.keys()))
+
+        if replace_features:
+            curr_graph_data["feature_matrix"][cols_to_compute] = feature_matrix_density
+            curr_graph_data["features"][cols_to_compute] = features_density
+        else:
+            curr_graph_data["feature_matrix"] = np.hstack([curr_graph_data["feature_matrix"],feature_matrix_density])
+            curr_graph_data["features"] = np.hstack([curr_graph_data["features"],features_density])
+
+    if verbose:
+        print(f'New feature matrix shape = {curr_graph_data["feature_matrix"].shape}')
+    return curr_graph_data
+
+def add_density_to_graph_data_in_df(
+    df,
+    in_place = False,
+    replace_features = False,
+    verbose = False,
+    ):
+    """
+    Purpose: to increment the graph data
+    in a dataframe storage with density attributes
+    """
+
+
+
+    if not in_place:
+        df = df.copy(deep=True)
+
+    curr_graphs = df["graph_data"].to_list()
+    for curr_graph_data in tqdm(curr_graphs):
+        curr_graph_data["data"] = nxio.add_density_to_graph_data(
+            curr_graph_data["data"],
+            in_place = in_place,
+            replace_features=replace_features,
+            verbose=verbose)
+
+    return df
 
 import neuron_nx_io as nxio
