@@ -3080,5 +3080,315 @@ def fix_width_inf_nan(
         print(f"nodes_fixed = {nodes_fixed}")
     return G  
 
+import numpy as np
+
+def soma_vector_to_node(
+    G,
+    n,
+    soma_coordinate = None,
+    normalize = True,
+    verbose = False,  
+    ):
+    """
+    Purpose: To get the angle between a node
+    and the soma a node
+    
+    Ex:
+    nxu.soma_vector_to_node(
+        G = G,
+        soma_coordinate = None,
+        normalize = True,
+        n = "L0_0",
+    )
+    """
+    if soma_coordinate is None:
+        soma_coordinate = nxu.soma_center(G)
+
+    soma_vector = G.nodes[n]["endpoint_upstream"] - soma_coordinate
+    if normalize:
+        soma_vector = soma_vector / np.linalg.norm(soma_vector)
+
+    if verbose:
+        print(f"soma_vector = {soma_vector}")
+        
+    return soma_vector
+
+def skeleton_vector_upstream_and_width_from_node(
+    G,
+    n,
+    upstream_dist_max = 3000,#np.inf
+    verbose = False,
+    return_width = True,
+    ):
+    """
+    Purpose: To get the skeleton vector of a node pointing in downstream
+    (and may be restricted by certain downstream distance)
+
+    - can return the associated width
+
+    Pseudocode: 
+    1) Find the n_idx to restrict to for the downstream dist
+    
+    Ex: 
+    nxu.skeleton_vector_upstream_and_width_from_node(
+        G = G_limbs[0],
+        n = "L0_22",
+        upstream_dist_max = 3000,#np.inf
+        verbose = True,
+        return_width = True,
+
+    )
+
+    """
+    node_data = G.nodes[n]
+
+    idx = [k for k in node_data["width_data"]
+              if k["upstream_dist"] <= upstream_dist_max]
+    max_idx = len(idx)
+
+    if verbose:
+        print(f"max_idx = {max_idx} (out of {len(node_data['width_data'])} nodes)")
+
+    skeleton_nodes = node_data["skeleton_data"][:max_idx+1]
+    skeleton_vector = skeleton_nodes[-1,:] - skeleton_nodes[0,:]
+    skeleton_vector = skeleton_vector/np.linalg.norm(skeleton_vector)
+
+    if verbose:
+        print(f"skeleton_vector = {skeleton_vector}")
+
+    # find the width associated with the skeleton
+    skeleton_lengths = np.linalg.norm(skeleton_nodes[1:]-skeleton_nodes[:-1],axis=1)
+    widths = [k["width"] for k in node_data["width_data"][:max_idx]]
+
+    weighted_width = nu.weighted_average(widths,skeleton_lengths)
+    if verbose:
+        print(f"widths = {widths}, skeletal_seg_lengths = {skeleton_lengths}")
+        print(f"weighted_width = {weighted_width}")
+
+    if return_width:
+        return skeleton_vector,weighted_width
+    else:
+        return skeleton_vector
+    
+    
+def most_upstream_node_vector_stats(
+    G,
+    soma_coordinate,
+    most_upstream_node=None,
+    upstream_dist_max=3000,
+    verbose = False
+    ):
+    
+    """
+    Purpose: to compute the soma and skeleton
+    vector and other statitistics about the
+    most upstream node on a graph
+    """
+    subG = G
+    if most_upstream_node is None:
+        most_upstream_node = xu.most_upstream_node(subG)
+    if verbose:
+        print(f"    most_upstream_node = {most_upstream_node}")
+
+    # a) Determine the soma vector
+    soma_vector = nxu.soma_vector_to_node(
+        G = G,
+        soma_coordinate = soma_coordinate,
+        normalize = True,
+        n = most_upstream_node,
+    )
+    
+    if verbose:
+        print(f"soma_vector = {soma_vector}")
+
+    # b) Determine the skeleton vector
+    skeleton_vector,width = nxu.skeleton_vector_upstream_and_width_from_node(
+        G = G,
+        n = most_upstream_node,
+        upstream_dist_max = upstream_dist_max,#np.inf
+        verbose = False,
+        return_width = True,
+
+    )
+    
+    if verbose:
+        print(f"skeleton_vector = {skeleton_vector}")
+        print(f"width = {width}")
+
+    n = most_upstream_node
+    return_dict = dict(
+        node=most_upstream_node,
+        endpoint_upstream_x_nm=G.nodes[n]["endpoint_upstream"][0],
+        endpoint_upstream_y_nm=G.nodes[n]["endpoint_upstream"][1],
+        endpoint_upstream_z_nm=G.nodes[n]["endpoint_upstream"][2],
+        endpoint_downstream_x_nm=G.nodes[n]["endpoint_downstream"][0],
+        endpoint_downstream_y_nm=G.nodes[n]["endpoint_downstream"][1],
+        endpoint_downstream_z_nm=G.nodes[n]["endpoint_downstream"][2],
+        soma_vector_x_nm = soma_vector[0],
+        soma_vector_y_nm = soma_vector[1],
+        soma_vector_z_nm = soma_vector[2],
+        skeleton_vector_x_nm = skeleton_vector[0],
+        skeleton_vector_y_nm = skeleton_vector[1],
+        skeleton_vector_z_nm = skeleton_vector[2],
+        width = width,
+
+    )
+    
+    return return_dict
+
+def skeletal_length_on_G(
+    G,
+    ):
+    return np.sum([G.nodes[k]["skeletal_length"] for k in G.nodes()])
+
+
+def compartment_vector_width_stats_from_G(
+    G,
+    upstream_dist_max = 3000,
+    min_skeletal_length_limb = 50_000,
+    verbose = False,
+    ):
+
+    
+    """
+    Purpose: To determine the max vector
+    and weighted vector of all the compartments of a neuron
+
+    1) Download the neuron graph
+    2) Filter the neuron graph for small starter branches
+    3) For each limb and then for each compartment:
+        a. Find if nodes exist with that label
+        b. Find the most upstream node
+        c. Determine the width of that node (using the width data and upstream search distance)
+        d. Save off the soma starting angle of that branch and the current skeleton angle and width
+
+    4) For each compartment:
+        a. Find the soma starting vector and skeleton vector of the weighted options (weight by width_max and width)
+
+    5) Save off curr data to datajoint for each compartment:
+    - angles (max and not max)
+    - n_limbs in compartment
+
+    """
+    G_filt = nxu.remove_small_starter_branches(
+                G,
+                verbose = verbose,
+                maintain_skeleton_connectivity = True)
+    soma_coordinate = nxu.soma_center(G_filt)
+
+    compartments = ["axon","dendrite","apicalshaft","basal"]
+    comp_dict = {k:[] for k in compartments}
+
+
+
+    G_limbs = nxu.all_limb_graphs_off_soma(G_filt)
+    for j,limb in enumerate(G_limbs):
+        if verbose:
+            print(f"---Working on limb {j}---")
+
+
+        for comp in compartments:
+            subG = nxu.compartment_subgraph(limb,comp)
+
+            # check if any nodes with that label
+            if len(subG) == 0 and comp == 'apicalshaft':
+                subG = nxu.compartment_subgraph(limb,"apical")
+
+
+            if len(subG) == 0:
+                if verbose:
+                    print(f"No {comp} nodes in subgraph")
+                continue
+            else:
+                if verbose:
+                    print(f"# of {comp} nodes = {len(subG)}")
+
+            most_upstream_node = xu.most_upstream_node(subG)
+            G_downstream = limb.subgraph(xu.all_downstream_nodes(
+                 limb,
+                most_upstream_node,
+                include_self=True
+            )).copy()
+
+            limb_skeletal_length = nxu.skeletal_length_on_G(G_downstream)
+
+            if verbose:
+                print(f"limb_skeletal_length = {limb_skeletal_length}")
+
+            if limb_skeletal_length < min_skeletal_length_limb:
+                if verbose:
+                    print(f"   *** skipping limb {j} because skeletal_length ({limb_skeletal_length})"
+                         f" was less than minimum ({min_skeletal_length_limb})")
+                continue
+
+            curr_dict = nxu.most_upstream_node_vector_stats(
+                G=subG,
+                most_upstream_node=most_upstream_node,
+                soma_coordinate=soma_coordinate,
+                upstream_dist_max=upstream_dist_max,
+                verbose = verbose
+                )
+
+            comp_dict[comp].append(curr_dict)
+
+    """
+    Purpose: For each compartment:
+        a. Find the soma starting vector and skeleton vector of the weighted options (weight by width_max and width)
+
+    Pseudocode:
+    For each compartment:
+    a. Find the max width
+    b. keep that dict for the max width one (add max to the labels)
+    c. For vectors (soma and skeleton), do a weighted average with all widths and add to dict
+    d. add compartment prefixs to dictionary and add to list
+
+    """
+
+
+    total_comp_dict = dict()
+    for comp in compartments:
+        if verbose:
+            print(f"-- Working on consolidating {comp} --")
+        curr_dicts = comp_dict[comp]
+        if len(curr_dicts) == 0:
+            continue
+        widths = np.array([k["width"] for k in curr_dicts])
+        if verbose:
+            print(f"widths = {widths}")
+
+        width_max_idx = np.argmax(widths)
+        max_dict = curr_dicts[width_max_idx]
+
+        #do weighted average of all the vectors
+        soma_vectors = np.vstack([np.array([k[f"soma_vector_{v}_nm"] for v in ["x","y","z"]]) for k in curr_dicts])
+        skeletal_vectors = np.vstack([np.array([k[f"skeleton_vector_{v}_nm"] for v in ["x","y","z"]]) for k in curr_dicts])
+
+        soma_vector_weighted=nu.weighted_average_along_axis(
+            soma_vectors,weights=widths,axis=0
+        )
+
+        skeleton_vector_weighted=nu.weighted_average_along_axis(
+            skeletal_vectors,weights=widths,axis=0
+        )
+
+        final_dict = dict(
+            max_dict.copy(),
+            n_limbs = len(curr_dicts),
+            soma_vector_weighted_x_nm = soma_vector_weighted[0],
+            soma_vector_weighted_y_nm = soma_vector_weighted[1],
+            soma_vector_weighted_z_nm = soma_vector_weighted[2],
+
+            skeleton_vector_weighted_x_nm = skeleton_vector_weighted[0],
+            skeleton_vector_weighted_y_nm = skeleton_vector_weighted[1],
+            skeleton_vector_weighted_z_nm = skeleton_vector_weighted[2],
+        )
+
+        if comp == "apicalshaft":
+            comp = "apical"
+        #append the compartment name
+        final_dict = {f"{comp}_{k}":v for k,v in final_dict.items()}
+        total_comp_dict.update(final_dict)
+        
+    return total_comp_dict
 
 import neuron_nx_utils as nxu
