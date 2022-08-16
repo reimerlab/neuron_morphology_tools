@@ -2957,8 +2957,8 @@ def skeleton_graph(
     G,
     graph_type="Graph"):
     import skeleton_utils as sk
-    verts,edges = nxu.skeleton(G_obj)
-    return sk.graph_from_non_unique_vertices_edges(verts,edge)
+    verts,edges = nxu.skeleton(G)
+    return sk.graph_from_non_unique_vertices_edges(verts,edges)
 
 def fix_attribute(G,
         attribute="spine",
@@ -3326,8 +3326,10 @@ def compartment_vector_width_stats_from_G(
                 most_upstream_node=most_upstream_node,
                 soma_coordinate=soma_coordinate,
                 upstream_dist_max=upstream_dist_max,
-                verbose = verbose
+                verbose = verbose,
                 )
+            
+            curr_dict["skeletal_length"] = limb_skeletal_length
 
             comp_dict[comp].append(curr_dict)
 
@@ -3390,5 +3392,23 @@ def compartment_vector_width_stats_from_G(
         total_comp_dict.update(final_dict)
         
     return total_comp_dict
+
+def G_no_soma(G,soma_node_name = None):
+    if soma_node_name is None:
+        soma_node_name = nxu.soma_node_name_global
+    return xu.remove_nodes_from(G,[soma_node_name])
+
+def all_node_graphs(G,verbose = False):
+    G = nxu.G_no_soma(G)             
+    if verbose:
+        print(f"components = {components}")
+    
+    return_graphs = [G.subgraph([n]).copy()
+                     for n in G.nodes()]
+    
+    if verbose:
+        print(f"# of node subgraphs = {len(return_graphs)}")
+    
+    return return_graphs
 
 import neuron_nx_utils as nxu
