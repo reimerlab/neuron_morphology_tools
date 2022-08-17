@@ -3411,4 +3411,9 @@ def all_node_graphs(G,verbose = False):
     
     return return_graphs
 
+def skeleton_downstream_of_node(G,node,include_self=True):
+    return nxu.skeleton(
+        xu.subgraph_downstream_of_node(G,node,include_self=include_self)
+    )
+
 import neuron_nx_utils as nxu
