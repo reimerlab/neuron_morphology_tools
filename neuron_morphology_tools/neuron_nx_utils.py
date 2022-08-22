@@ -18,6 +18,31 @@ dynamic_attributes_default = (
  'synapse_data',
  'width_data',
   'skeleton_data')
+
+compartments_excitatory = [
+    'apical',
+    'apical_shaft',
+    'apical_tuft',
+    'basal',
+    'axon',
+    'oblique',
+]
+
+compartments_inhibitory = [
+    'axon',
+    'dendrite',
+]
+
+compartment_colors = {'apical': 'blue',
+ 'apical_shaft': 'aqua',
+ 'apical_tuft': 'purple',
+ 'basal': 'brown',
+ 'axon': 'red',
+ 'oblique': 'green',
+ 'dendrite': 'lightsteelblue',
+ 'apical_total': 'magenta',
+ 'soma': 'black'}
+
 import copy
 
 
@@ -295,6 +320,7 @@ def remove_small_starter_branches(
     inplace = False,
     verbose = True,
     maintain_skeleton_connectivity = True,
+    loop_until_fail = True,
     **kwargs):
     """
     Purpose: To remove small starter branches from 
@@ -313,25 +339,33 @@ def remove_small_starter_branches(
     if not inplace:
         G = copy.deepcopy(G)
 
-    sm_st_branches = nxu.small_starter_branches(
-        G,
-        verbose = verbose,
-        skeletal_length_min = skeletal_length_min,
-        **kwargs)
-    
-    if verbose:
-        print(f"Soma Starter Branches = {sm_st_branches}")
+    while True:
+        sm_st_branches = nxu.small_starter_branches(
+            G,
+            verbose = verbose,
+            skeletal_length_min = skeletal_length_min,
+            **kwargs)
 
-#     for s_b in sm_st_branches:
-# #         if verbose:
-# #             print(f"Removing {s_b}")
-    nxu.remove_node(
-        G,
-        sm_st_branches,
-        verbose= verbose,
-        inplace = True,
-        maintain_skeleton_connectivity=maintain_skeleton_connectivity,
-        **kwargs)
+        if verbose:
+            print(f"Soma Starter Branches = {sm_st_branches}")
+
+    #     for s_b in sm_st_branches:
+    # #         if verbose:
+    # #             print(f"Removing {s_b}")
+        nxu.remove_node(
+            G,
+            sm_st_branches,
+            verbose= verbose,
+            inplace = True,
+            maintain_skeleton_connectivity=maintain_skeleton_connectivity,
+            **kwargs)
+
+        if not loop_until_fail:
+            break
+        elif len(sm_st_branches) == 0:
+            break
+        else:
+            continue
 
     return G
 
@@ -2556,6 +2590,14 @@ def skeleton(
         return skeleton_nodes,skeleton_edges
     else:
         return skeleton_nodes[skeleton_edges]
+    
+def plot_skeleton(G,mesh=None,**kwargs):
+    nxu.skeleton(
+        G,
+        plot = True,
+        mesh = mesh,
+        **kwargs
+    )
 
 def skeleton_nodes(
     G,
@@ -3244,8 +3286,9 @@ def skeletal_length_on_G(
 
 def compartment_vector_width_stats_from_G(
     G,
-    upstream_dist_max = 3000,
-    min_skeletal_length_limb = 50_000,
+    small_starter_branch_skeletal_length_min = 1000,
+    upstream_dist_max = 6000,
+    min_skeletal_length_limb = 10_000,#50_000,
     verbose = False,
     ):
 
@@ -3273,6 +3316,7 @@ def compartment_vector_width_stats_from_G(
     G_filt = nxu.remove_small_starter_branches(
                 G,
                 verbose = verbose,
+                skeletal_length_min=small_starter_branch_skeletal_length_min,
                 maintain_skeleton_connectivity = True)
     soma_coordinate = nxu.soma_center(G_filt)
 
@@ -3411,9 +3455,76 @@ def all_node_graphs(G,verbose = False):
     
     return return_graphs
 
-def skeleton_downstream_of_node(G,node,include_self=True):
+def skeleton_downstream_of_node(
+    G,
+    node,
+    include_self=True,
+    return_verts_edges = True,):
     return nxu.skeleton(
-        xu.subgraph_downstream_of_node(G,node,include_self=include_self)
+        xu.subgraph_downstream_of_node(G,node,include_self=include_self),
+        return_verts_edges=return_verts_edges,
     )
+
+def all_compartment_skeletons(
+    G,
+    cell_type = "excitatory",
+    compartments = None,
+    verbose = False,
+    plot = False,
+    mesh = None,
+    return_empty_skeletons = False,
+    ):
+    
+    """
+    Purpose: To get all the compartment skeletons
+    from a graph
+    """
+    if compartments is None:
+        compartments = getattr(nxu,f"compartments_{cell_type}")
+        
+    if verbose:
+        print(f"Compartments = {compartments}")
+        
+    comp_dict = {k:nxu.compartment_skeleton(G,k) for k in compartments}
+    
+    if return_empty_skeletons:
+        comp_dict = {k:v for k,v in comp_dict.items() if len(v[0]) > 0}
+    
+    if plot:
+        new_figure = True
+        if mesh is not None:
+            ipvu.plot_mesh(
+                mesh,
+                new_figure=True,
+                show_at_end=False,
+                flip_y=True,
+                alpha = 0.1
+            )
+            new_figure = False
+            
+        comp_dict_to_plot = {k:v for k,v in comp_dict.items() if len(v[0]) > 0}
+        for j,(k,(skeleton_nodes,skeleton_edges)) in enumerate(comp_dict_to_plot.items()):
+            color = nxu.compartment_colors[k]
+            
+            if j == len(comp_dict_to_plot) - 1:
+                show_at_end=True
+            else:
+                show_at_end = False
+            
+            ipvu.plot_skeleton(
+               skeleton_nodes,
+                skeleton_edges,
+                new_figure = new_figure,
+                show_at_end = show_at_end,
+                color = color
+            )
+            
+            new_figure = False
+            
+    return comp_dict
+
+def plot_all_skeleton_compartments(G,mesh=None,**kwargs):
+    nxu.all_compartment_skeletons(G,plot=True,mesh=mesh,**kwargs)
+
 
 import neuron_nx_utils as nxu
