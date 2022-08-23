@@ -3608,7 +3608,10 @@ def skeleton_edge_df_with_edge_graph_with_compartments(
         coord_per_nodes[edge_nodes][:,0],axis=1)
     edge_dict["midpoint"] = np.mean(coord_per_nodes[edge_nodes],axis=1)
     edge_df = pd.DataFrame.from_dict({k:list(v) for k,v in edge_dict.items()})
-    edge_df
+    
+    G_edge = xu.xu.relabel_node_names(
+        G_edge,{tuple(k):i for i,k in enumerate(list(edge_nodes))}
+    )
 
     # plot to make sure coordinates came out well
 
