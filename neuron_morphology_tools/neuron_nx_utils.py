@@ -2563,6 +2563,10 @@ def skeleton(
         skeleton_nodes = np.vstack([skeleton_nodes,soma_nodes])
         skeleton_edges = np.vstack([skeleton_edges,soma_edges])
 
+    if verbose:
+        print(f"# of nodes = {len(skeleton_nodes)}")
+        print(f"# of edges = {len(skeleton_edges)}")
+        
     if plot:
         new_figure = True
         if mesh is not None:
@@ -2582,9 +2586,7 @@ def skeleton(
 
         )
         
-    if verbose:
-        print(f"# of nodes = {len(skeleton_nodes)}")
-        print(f"# of edges = {len(skeleton_edges)}")
+    
         
     if return_verts_edges:
         return skeleton_nodes,skeleton_edges
@@ -3525,6 +3527,102 @@ def all_compartment_skeletons(
 
 def plot_all_skeleton_compartments(G,mesh=None,**kwargs):
     nxu.all_compartment_skeletons(G,plot=True,mesh=mesh,**kwargs)
+    
+    
+import numpy as np
+import ipyvolume_utils as ipvu
+import networkx_utils as xu
+import numpy as np
+import pandas as pd
+import numpy_utils as nu
+
+def skeleton_edge_df_with_edge_graph_with_compartments(
+    G,
+    verbose = True,
+    plot = False,
+    return_edge_G = True,
+    ):
+
+    """
+    Purpose: To get all the edge data for all compartments
+    and to have a graph representation of those edges so can 
+    walk along:
+
+    Pseudocode: 
+    1) Reduce the vertices down to unique vertices and edges (and pass back the index)
+    2) Turn the vertices into a graph (and each node should have a compartment)
+    3) Trun graph into an edge graph
+    --> use the new node names to index into compartment and get the mode
+    --> use node names to index into coordinates and compute: skeletal length and midpoint
+
+    store all in dataframe for the edges
+
+    """
+
+    comp_skeletons = nxu.all_compartment_skeletons(G,plot=False,)
+
+    nodes_list = []
+    edges_list = []
+    comp_list = []
+
+    counter = 0
+    for comp,(nodes,edges) in comp_skeletons.items():
+        if verbose:
+            print(f"Working on {comp}")
+        if len(nodes) == 0:
+            continue
+
+        nodes_list.append(nodes)
+        edges_list.append(edges + counter)
+        comp_list.append(np.repeat(comp,len(nodes)))
+
+        counter += len(nodes)
+
+    nodes_list = np.vstack(nodes_list)
+    edges_list = np.vstack(edges_list)
+    comp_list = np.hstack(comp_list)
+
+    nodes_unique,edges_unique,node_orig_idx = xu.unique_vertices_edges_from_vertices_edges(
+        nodes_list,
+        edges_list,
+        return_vertex_index = True
+    )
+
+    comps_per_node = comp_list[node_orig_idx]
+    coord_per_nodes = nodes_list[node_orig_idx]
+
+    G_node = xu.graph_from_unique_vertices_edges(
+        nodes_unique,
+        edges_unique
+    )
+
+    G_edge = xu.edge_graph(G_node)
+    edge_nodes = np.array(list(G_edge.nodes())).astype('int')
+
+
+    edge_dict = dict()
+    edge_dict["edge_coord"] = coord_per_nodes[edge_nodes]
+    edge_dict["compartment"] = nu.mode(comps_per_node[edge_nodes],axis=1)
+    edge_dict["skeletal_length"] = np.linalg.norm(
+        coord_per_nodes[edge_nodes][:,1]-
+        coord_per_nodes[edge_nodes][:,0],axis=1)
+    edge_dict["midpoint"] = np.mean(coord_per_nodes[edge_nodes],axis=1)
+    edge_df = pd.DataFrame.from_dict({k:list(v) for k,v in edge_dict.items()})
+    edge_df
+
+    # plot to make sure coordinates came out well
+
+    #plot to make sure assembled correctly
+    if plot:
+        ipvu.plot_scatter(
+            np.vstack(edge_df["midpoint"].to_numpy()),
+            color=[nxu.compartment_colors[k] for k in edge_df["compartment"].to_list()],
+        )
+        
+    if return_edge_G:
+        return edge_df,G_edge
+    else:
+        return edge_df
 
 
 import neuron_nx_utils as nxu
