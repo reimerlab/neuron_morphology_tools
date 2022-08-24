@@ -19,6 +19,7 @@ dynamic_attributes_default = (
  'width_data',
   'skeleton_data')
 
+
 compartments_excitatory = [
     'apical',
     'apical_shaft',
@@ -33,6 +34,8 @@ compartments_inhibitory = [
     'dendrite',
 ]
 
+compartments = compartments_excitatory + ["dendrite"]
+
 compartment_colors = {'apical': 'blue',
  'apical_shaft': 'aqua',
  'apical_tuft': 'purple',
@@ -42,6 +45,12 @@ compartment_colors = {'apical': 'blue',
  'dendrite': 'lightsteelblue',
  'apical_total': 'magenta',
  'soma': 'black'}
+
+
+# --- global parameters for vector computations ---
+default_upstream_dist_max = 6000
+default_scholl_interval = 10_000
+
 
 import copy
 
@@ -288,16 +297,21 @@ def remove_node(
             if maintain_skeleton_connectivity:
                 endpoint_upstream = G.nodes[node]["endpoint_upstream"]
                 width_upstream = G.nodes[node]["width_new"]["no_spine_median_mesh_center"]
+                
                 skeletal_length_upstream = G.nodes[node]["skeletal_length"]
                 if verbose:
                     print(f"Adding endpoint_upstream {endpoint_upstream} to the downstream nodes skeleton")
                 for n in downstream_nodes:
                     G.nodes[n]["endpoint_upstream"]  = endpoint_upstream
                     G.nodes[n]["skeleton_data"] = np.concatenate([[endpoint_upstream],G.nodes[n]["skeleton_data"]])
+                    width_upstream_curr = width_upstream
                     for i,(k) in enumerate(G.nodes[n]["width_data"]):
-                        G.nodes[n]["width_data"][i]["upstream_dist"] = G.nodes[n]["width_data"][i]["upstream_dist"] + width_upstream
+                        if np.isinf(width_upstream):
+                            width_upstream_curr = G.nodes[n]["width_data"][0]["width"]
+                        
+                        G.nodes[n]["width_data"][i]["upstream_dist"] = G.nodes[n]["width_data"][i]["upstream_dist"] + skeletal_length_upstream
                     G.nodes[n]["width_data"] = [dict(upstream_dist=skeletal_length_upstream,
-                                                     width = width_upstream)] + G.nodes[n]["width_data"]
+                                                     width = width_upstream_curr)] + G.nodes[n]["width_data"]
                     
         if not remove_all_downstream_nodes:
             xu.remove_node_reattach_children_di(G,node,inplace = True)
@@ -368,6 +382,8 @@ def remove_small_starter_branches(
             continue
 
     return G
+
+filter_small_starter_branches = remove_small_starter_branches 
 
 import numpy as np
 def soma_radius(
@@ -3126,7 +3142,7 @@ def fix_width_inf_nan(
 
 import numpy as np
 
-def soma_vector_to_node(
+def soma_vector_from_node(
     G,
     n,
     soma_coordinate = None,
@@ -3138,7 +3154,7 @@ def soma_vector_to_node(
     and the soma a node
     
     Ex:
-    nxu.soma_vector_to_node(
+    nxu.soma_vector_from_node(
         G = G,
         soma_coordinate = None,
         normalize = True,
@@ -3160,7 +3176,7 @@ def soma_vector_to_node(
 def skeleton_vector_upstream_and_width_from_node(
     G,
     n,
-    upstream_dist_max = 3000,#np.inf
+    upstream_dist_max = None,#np.inf
     verbose = False,
     return_width = True,
     ):
@@ -3184,6 +3200,9 @@ def skeleton_vector_upstream_and_width_from_node(
     )
 
     """
+    if upstream_dist_max is None:
+        upstream_dist_max = default_upstream_dist_max
+    
     node_data = G.nodes[n]
 
     idx = [k for k in node_data["width_data"]
@@ -3219,15 +3238,18 @@ def most_upstream_node_vector_stats(
     G,
     soma_coordinate,
     most_upstream_node=None,
-    upstream_dist_max=3000,
+    upstream_dist_max=None,
     verbose = False
     ):
-    
+
     """
     Purpose: to compute the soma and skeleton
     vector and other statitistics about the
     most upstream node on a graph
     """
+    if upstream_dist_max is None:
+        upstream_dist_max = default_upstream_dist_max
+    
     subG = G
     if most_upstream_node is None:
         most_upstream_node = xu.most_upstream_node(subG)
@@ -3235,7 +3257,7 @@ def most_upstream_node_vector_stats(
         print(f"    most_upstream_node = {most_upstream_node}")
 
     # a) Determine the soma vector
-    soma_vector = nxu.soma_vector_to_node(
+    soma_vector = nxu.soma_vector_from_node(
         G = G,
         soma_coordinate = soma_coordinate,
         normalize = True,
@@ -3244,6 +3266,8 @@ def most_upstream_node_vector_stats(
     
     if verbose:
         print(f"soma_vector = {soma_vector}")
+        
+
 
     # b) Determine the skeleton vector
     skeleton_vector,width = nxu.skeleton_vector_upstream_and_width_from_node(
@@ -3280,21 +3304,135 @@ def most_upstream_node_vector_stats(
     
     return return_dict
 
-def skeletal_length_on_G(
+# def skeletal_length_on_G(
+#     G,
+#     ):
+#     return np.sum([G.nodes[k]["skeletal_length"] for k in G.nodes()])
+
+
+def scholl_coordinates(
     G,
+    soma_coordinate,
+    axes = None,
+    interval = None,
+    max_distance = None,
+    verbose = False,
+    return_dict = True,
+    plot = False,
     ):
-    return np.sum([G.nodes[k]["skeletal_length"] for k in G.nodes()])
+    """
+    Purpose: to calculate the coordinates
+    of the skeleton that are interval distances
+    away from the soma center
+    
+    Pseudocode: 
+    1) Calculate the intervals will measure at based
+    on max_distance or max of the G skeleton
+    """
+    if interval is None:
+        interval = default_scholl_interval
+    
+    if axes is None:
+        axes = np.array([0,2])
+    
+    if "np" not in str(type(G)):
+        skeleton = nxu.skeleton(G,return_verts_edges=False)
+        
+    # limiting the skeleton and center to certain axes
+    skeleton_axes = skeleton[:,:,axes]
+    soma_center_axes = soma_coordinate[axes]
+    
+        
+    if max_distance is None:
+        max_distance = np.max(
+            np.linalg.norm(skeleton_axes.reshape(-1,len(axes))-soma_center_axes,axis=1)
+        )
+        
+        if verbose:
+            print(f"max_distance computed = {max_distance}")
+            
+    radius_intervals = np.arange(0,max_distance+0.0001,interval)[1:]
+    
+    if verbose:
+        print(f"radius_intervals = {radius_intervals}")
+        
+    data_points = {
+        k:nsku.cirle_intersections(
+            skeleton,
+            soma_coordinate,
+            radius=k,
+            axes=axes,
+            verbose = verbose,
+            plot=plot) for k in radius_intervals
+    }
+    
+    if return_dict:
+        return data_points
+    else:
+        return list(data_points.values())
+    
+def vector_stats_from_G(
+    G,
+    soma_coordinate,
+    upstream_dist_max = None,
+    include_scholl_coordinates = False,
+    plot_scholl = False,
+    verbose = False,
+    ):
+    
+    """
+    Purpose: To compute the following statistics for 
+    a subgraph of a neuron object
 
+    a. starting width
+    b. starting y above the soma
+    c. soma angle
+    d. skeletal angle
+    e. skeletal length
+    f. starting endpoint
+    g. intersection points of skeleton 
+    (for as far as can go or max distance)
+    """
+    
+    if upstream_dist_max is None:
+        upstream_dist_max = default_upstream_dist_max
+    
+    skeletal_length = nsku.skeletal_length(G)
+    most_upstream_node = xu.most_upstream_node(G)
 
+    if verbose:
+        print(f"most_upstream_node = {most_upstream_node}")
+
+    curr_dict = nxu.most_upstream_node_vector_stats(
+        G=G,
+        most_upstream_node=most_upstream_node,
+        soma_coordinate=soma_coordinate,
+        upstream_dist_max=upstream_dist_max,
+        verbose = verbose,
+        )
+
+    curr_dict["skeletal_length"] = skeletal_length
+    curr_dict["y_soma_relative"] =  curr_dict["endpoint_upstream_y_nm"] - soma_coordinate[1]
+    
+    if include_scholl_coordinates:
+        curr_dict["scholl_coords"] = nxu.scholl_coordinates(
+            G,
+            soma_coordinate=soma_coordinate,
+            verbose = plot_scholl,
+            plot = plot_scholl,
+        )
+    
+    return curr_dict
+        
+
+import neuron_skeleton_utils as nsku
 def compartment_vector_width_stats_from_G(
     G,
     small_starter_branch_skeletal_length_min = 1000,
-    upstream_dist_max = 6000,
+    upstream_dist_max = None,
     min_skeletal_length_limb = 10_000,#50_000,
     verbose = False,
     ):
-
-    
     """
     Purpose: To determine the max vector
     and weighted vector of all the compartments of a neuron
@@ -3315,6 +3453,10 @@ def compartment_vector_width_stats_from_G(
     - n_limbs in compartment
 
     """
+    if upstream_dist_max is None:
+        upstream_dist_max = default_upstream_dist_max
+    
+    
     G_filt = nxu.remove_small_starter_branches(
                 G,
                 verbose = verbose,
@@ -3356,7 +3498,7 @@ def compartment_vector_width_stats_from_G(
                 include_self=True
             )).copy()
 
-            limb_skeletal_length = nxu.skeletal_length_on_G(G_downstream)
+            limb_skeletal_length = nsku.skeletal_length(G_downstream)
 
             if verbose:
                 print(f"limb_skeletal_length = {limb_skeletal_length}")
@@ -3467,9 +3609,32 @@ def skeleton_downstream_of_node(
         return_verts_edges=return_verts_edges,
     )
 
+def all_compartment_subgraphs(
+    G,
+    compartments = None,
+    verbose = False,
+    return_empty_graphs = False,
+    ):
+    
+    if compartments is None:
+        #compartments = getattr(nxu,f"compartments_{cell_type}")
+        compartments = getattr(nxu,f"compartments")
+        
+    if verbose:
+        print(f"Compartments Trying = {compartments}")
+        
+    comp_dict = {k:nxu.compartment_subgraph(G,k) for k in compartments}
+    
+    if not return_empty_graphs:
+        comp_dict = {k:v for k,v in comp_dict.items() if len(v.nodes()) > 0}
+        
+    if verbose:
+        print(f"Compartments Returning = {list(comp_dict.keys())}")
+        
+    return comp_dict
+        
 def all_compartment_skeletons(
     G,
-    cell_type = "excitatory",
     compartments = None,
     verbose = False,
     plot = False,
@@ -3481,16 +3646,15 @@ def all_compartment_skeletons(
     Purpose: To get all the compartment skeletons
     from a graph
     """
-    if compartments is None:
-        compartments = getattr(nxu,f"compartments_{cell_type}")
-        
-    if verbose:
-        print(f"Compartments = {compartments}")
-        
-    comp_dict = {k:nxu.compartment_skeleton(G,k) for k in compartments}
     
-    if return_empty_skeletons:
-        comp_dict = {k:v for k,v in comp_dict.items() if len(v[0]) > 0}
+    comp_subs = nxu.all_compartment_subgraphs(
+        G,
+        compartments = compartments,
+        verbose =verbose,
+        return_empty_graphs = return_empty_skeletons,
+        )
+    comp_dict = {k:nxu.skeleton(sub_G,include_soma = False) for k,sub_G in comp_subs.items()}
+    
     
     if plot:
         new_figure = True
@@ -3626,6 +3790,138 @@ def skeleton_edge_df_with_edge_graph_with_compartments(
         return edge_df,G_edge
     else:
         return edge_df
+    
+def all_compartment_conn_comp_subgraphs(
+    G,
+    compartments = None,
+    verbose = False,
+    return_compartments = True,
+    ):
+    """
+    Purpose: Divide a neuron graph
+    into the connected components of each
+    compartment type (so 2 oblique branches
+    should be 2 different subgraphs)
+    """
+    #1) Divide neuron into different compartment
+    comp_subgraphs = nxu.all_compartment_subgraphs(
+        G,
+        verbose = verbose,
+        compartments=compartments)
+
+    #2) Divide all subgraphs into connected components
+    all_subgraphs = []
+    all_subgraphs_comps = []
+    
+    for comp,sub_G in comp_subgraphs.items():
+        comp_Gs = xu.connected_components_subgraphs(sub_G)
+        all_subgraphs += comp_Gs
+        all_subgraphs_comps += [comp]*len(comp_Gs)
+
+    if verbose:
+        print(f"Total number of subgraphs = {len(all_subgraphs)}")
+        if len(all_subgraphs_comps) > 0:
+            lab,count = np.unique(all_subgraphs_comps,return_counts=True)
+            for l,c in zip(lab,count):
+                print(f"   {l}:{c}")
+
+    if return_compartments:
+        return all_subgraphs,all_subgraphs_comps
+    else:
+        return all_subgraphs
+    
+    
+def all_compartment_conn_comp_subgraph_vector_stats(
+    G,
+    small_starter_branch_skeletal_length_min = 1000,
+    upstream_dist_max = None,
+    verbose = True,
+    debug_idx = None,
+    mesh = None,
+    ):
+    """
+    Purpose: To divide a neuron into individual connected components of the
+    interested compartments. and then to calculate the following stats about them
+
+    1) soma vector
+    2) skeleton vector
+    3) width
+    4) y above the soma
+    5) skeletal length
+    6) The intersection points at different 
+    lengths from the soma (on the xz plane)
+    - predefine a stepsize and go as far as need be
+
+
+    Pseudocode: 
+    1) Divide neuron into different compartment
+    subgraphs
+    2) Divide all subgraphs into connected components
+    (put into one list)
+    3) For each graph in the list compute:
+    a. starting width
+    b. starting y above the soma
+    c. soma angle
+    d. skeletal angle
+    e. skeletal width
+    f. intersection points of skeleton 
+    g. starting endpoint
+    (for as far as can go or max distance)
+    """
+
+    if upstream_dist_max is None:
+        upstream_dist_max = default_upstream_dist_max
+
+    if debug_idx is None:
+        debug_idx = []
+
+
+    #0) Filter the starter branches
+    G_filt = nxu.remove_small_starter_branches(
+        G,
+        verbose = verbose,
+        skeletal_length_min=small_starter_branch_skeletal_length_min,
+        maintain_skeleton_connectivity = True
+    )
+
+    #1) Getting the soma coordinate (for later computation)
+    soma_coordinate = nxu.soma_center(G_filt)
+
+    comp_subgraphs,comps = nxu.all_compartment_conn_comp_subgraphs(
+        G_filt,
+        verbose = verbose
+    )
+
+    all_dicts = []
+    for idx in range(len(comp_subgraphs)):
+        subG,comp = comp_subgraphs[idx],comps[idx]
+
+        if verbose:
+            print(f"--- Working on subgraph {idx}: comp = {comp}, n_nodes = {len(subG.nodes())} ")
+
+        curr_dict = nxu.vector_stats_from_G(
+            subG,
+            soma_coordinate=soma_coordinate,
+            include_scholl_coordinates = True,
+            verbose = verbose
+        )
+
+        curr_dict["compartment"] = comp
+        curr_dict["subgraph_idx"] = idx
+
+
+        if idx in debug_idx:
+            nviz.plot_objects(
+                mesh,
+                scatters = [
+                   G.nodes[curr_dict["node"]]["skeleton_data"],
+                    np.vstack(curr_dict["scholl_coords"].values())
+                ],
+            )
+
+        all_dicts.append(curr_dict)
+
+    return all_dicts
 
 
 import neuron_nx_utils as nxu
