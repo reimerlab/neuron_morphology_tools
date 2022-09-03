@@ -331,7 +331,7 @@ def remove_small_starter_branches(
     G,
     skeletal_length_min= None,
     inplace = False,
-    verbose = True,
+    verbose = False,
     maintain_skeleton_connectivity = True,
     loop_until_fail = True,
     **kwargs):
@@ -4373,5 +4373,32 @@ def subgraph_df_and_endnodes_df(
         print(f"# of endnode entries = {len(endnode_df)}")
 
     return subgraph_df,endnode_df
+
+def shortest_path_from_most_upstream(
+    G,
+    node,
+    nodes_to_exclude = ("S0",),
+    **kwargs
+    ):
+    """
+    Ex: 
+    nxu.shortest_path_from_most_upstream(
+        G,
+        node="L0_1",
+    )
+    """
+    
+    return xu.shortest_path_from_most_upstream(
+    G,
+    node=node,
+    nodes_to_exclude = nodes_to_exclude,
+    **kwargs
+    )
+
+def node_endpoint(G,node):
+    node= nu.array_like(node)
+    return np.vstack([
+        G.nodes[n]["endpoint_downstream"]
+        for n in node])
 
 import neuron_nx_utils as nxu
