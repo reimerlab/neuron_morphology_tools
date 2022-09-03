@@ -168,7 +168,6 @@ def draw_tree(
         figsize=figsize,
         **kwargs)
     
-    
 skeletal_length_min_starter_branches_global = 700
 def small_starter_branches(
     G,
@@ -1267,6 +1266,14 @@ def most_upstream_node(
         verbose = verbose,
         return_downstream_count = False,
         )[0]
+
+def most_upstream_coordinate(G):
+    """
+    Purpose: Get upstream skeleton point of the 
+    most upstream node
+    """
+    node = nxu.most_upstream_node(G)
+    return G.nodes[node]["endpoint_upstream"]
     
 def limb_graphs_from_soma_connected_nodes(
     G,
@@ -3236,7 +3243,7 @@ def skeleton_vector_upstream_and_width_from_node(
     
 def most_upstream_node_vector_stats(
     G,
-    soma_coordinate,
+    soma_coordinate=None,
     most_upstream_node=None,
     upstream_dist_max=None,
     verbose = False
@@ -3247,6 +3254,8 @@ def most_upstream_node_vector_stats(
     vector and other statitistics about the
     most upstream node on a graph
     """
+    return_dict = dict()
+    
     if upstream_dist_max is None:
         upstream_dist_max = default_upstream_dist_max
     
@@ -3255,17 +3264,27 @@ def most_upstream_node_vector_stats(
         most_upstream_node = xu.most_upstream_node(subG)
     if verbose:
         print(f"    most_upstream_node = {most_upstream_node}")
+        
 
     # a) Determine the soma vector
-    soma_vector = nxu.soma_vector_from_node(
-        G = G,
-        soma_coordinate = soma_coordinate,
-        normalize = True,
-        n = most_upstream_node,
-    )
     
-    if verbose:
-        print(f"soma_vector = {soma_vector}")
+    soma_coord_dict = dict()
+    if soma_coordinate is not None:
+        soma_vector = nxu.soma_vector_from_node(
+            G = G,
+            soma_coordinate = soma_coordinate,
+            normalize = True,
+            n = most_upstream_node,
+        )
+
+        if verbose:
+            print(f"soma_vector = {soma_vector}")
+            
+        soma_coord_dict = dict(
+        soma_vector_x_nm = soma_vector[0],
+        soma_vector_y_nm = soma_vector[1],
+        soma_vector_z_nm = soma_vector[2],
+        )
         
 
 
@@ -3292,15 +3311,14 @@ def most_upstream_node_vector_stats(
         endpoint_downstream_x_nm=G.nodes[n]["endpoint_downstream"][0],
         endpoint_downstream_y_nm=G.nodes[n]["endpoint_downstream"][1],
         endpoint_downstream_z_nm=G.nodes[n]["endpoint_downstream"][2],
-        soma_vector_x_nm = soma_vector[0],
-        soma_vector_y_nm = soma_vector[1],
-        soma_vector_z_nm = soma_vector[2],
         skeleton_vector_x_nm = skeleton_vector[0],
         skeleton_vector_y_nm = skeleton_vector[1],
         skeleton_vector_z_nm = skeleton_vector[2],
         width = width,
 
     )
+    
+    return_dict.update(soma_coord_dict)
     
     return return_dict
 
@@ -3318,6 +3336,7 @@ def scholl_coordinates(
     max_distance = None,
     verbose = False,
     return_dict = True,
+    adjusted = True,
     plot = False,
     ):
     """
@@ -3337,6 +3356,13 @@ def scholl_coordinates(
     
     if "np" not in str(type(G)):
         skeleton = nxu.skeleton(G,return_verts_edges=False)
+        
+    if adjusted:
+        upstream_endpoint = nxu.most_upstream_coordinate(G)
+        adjusted_offset = upstream_endpoint - soma_coordinate
+        if verbose:
+            print(f"Adjusted offset = {adjusted_offset}")
+        skeleton = skeleton - adjusted_offset
         
     # limiting the skeleton and center to certain axes
     skeleton_axes = skeleton[:,:,axes]
@@ -3366,6 +3392,10 @@ def scholl_coordinates(
             plot=plot) for k in radius_intervals
     }
     
+    if adjusted:
+        data_points = dict([(k,v + adjusted_offset) if len(v) > 0 else (k,v)
+            for k,v in data_points.items()])
+    
     if return_dict:
         return data_points
     else:
@@ -3373,9 +3403,13 @@ def scholl_coordinates(
     
 def vector_stats_from_G(
     G,
-    soma_coordinate,
+    soma_coordinate=None,
     upstream_dist_max = None,
     include_scholl_coordinates = False,
+    include_scholl_coordinates_adjusted = False,
+    include_bbox = True,
+    include_internal_branching = True,
+    include_n_scholl = True,
     plot_scholl = False,
     verbose = False,
     ):
@@ -3412,17 +3446,59 @@ def vector_stats_from_G(
         )
 
     curr_dict["skeletal_length"] = skeletal_length
-    curr_dict["y_soma_relative"] =  curr_dict["endpoint_upstream_y_nm"] - soma_coordinate[1]
+    if soma_coordinate is not None:
+        curr_dict["y_soma_relative"] =  curr_dict["endpoint_upstream_y_nm"] - soma_coordinate[1]
+    curr_dict["n_nodes"] = len(G.nodes())
     
-    if include_scholl_coordinates:
+    
+    leaf_nodes = xu.leaf_nodes(G)
+    curr_dict["leaf_nodes"] = leaf_nodes
+    curr_dict["n_leaf_nodes"] = len(leaf_nodes)
+    
+    if include_scholl_coordinates and soma_coordinate is not None:
         curr_dict["scholl_coords"] = nxu.scholl_coordinates(
             G,
             soma_coordinate=soma_coordinate,
             verbose = plot_scholl,
             plot = plot_scholl,
+            adjusted = False,
         )
+        
+        if include_n_scholl:
+            curr_dict.update(
+                n_scholl_dict_from_scholl_dict(
+                    curr_dict["scholl_coords"],
+                    prefix = ""
+                )
+            )
+        
+    if include_scholl_coordinates_adjusted and soma_coordinate is not None:
+        curr_dict["scholl_coords_adjusted"] = nxu.scholl_coordinates(
+            G,
+            soma_coordinate=soma_coordinate,
+            verbose = plot_scholl,
+            plot = plot_scholl,
+            adjusted = True,
+        )
+        
+        if include_n_scholl:
+            curr_dict.update(
+                n_scholl_dict_from_scholl_dict(
+                    curr_dict["scholl_coords_adjusted"],
+                    prefix = "_adjusted"
+                )
+            )
+    
+    if include_internal_branching:
+        curr_dict.update(nxu.internal_branching_stats(G))
+        
+    if include_bbox:
+        curr_dict.update(nxu.skeleton_bbox(G,return_dict = True))
     
     return curr_dict
+
+
+
         
 
 import neuron_skeleton_utils as nsku
@@ -3834,10 +3910,15 @@ def all_compartment_conn_comp_subgraphs(
 def all_compartment_conn_comp_subgraph_vector_stats(
     G,
     small_starter_branch_skeletal_length_min = 1000,
+    filter_starter_branches = True,
     upstream_dist_max = None,
     verbose = True,
     debug_idx = None,
     mesh = None,
+    return_subgraphs = False,
+    include_scholl_coordinates = True,
+    include_scholl_coordinates_adjusted = True,
+    return_df = False,
     ):
     """
     Purpose: To divide a neuron into individual connected components of the
@@ -3877,12 +3958,13 @@ def all_compartment_conn_comp_subgraph_vector_stats(
 
 
     #0) Filter the starter branches
-    G_filt = nxu.remove_small_starter_branches(
-        G,
-        verbose = verbose,
-        skeletal_length_min=small_starter_branch_skeletal_length_min,
-        maintain_skeleton_connectivity = True
-    )
+    if filter_starter_branches:
+        G_filt = nxu.remove_small_starter_branches(
+            G,
+            verbose = verbose,
+            skeletal_length_min=small_starter_branch_skeletal_length_min,
+            maintain_skeleton_connectivity = True
+        )
 
     #1) Getting the soma coordinate (for later computation)
     soma_coordinate = nxu.soma_center(G_filt)
@@ -3902,12 +3984,16 @@ def all_compartment_conn_comp_subgraph_vector_stats(
         curr_dict = nxu.vector_stats_from_G(
             subG,
             soma_coordinate=soma_coordinate,
-            include_scholl_coordinates = True,
+            include_scholl_coordinates = include_scholl_coordinates,
+            include_scholl_coordinates_adjusted = include_scholl_coordinates_adjusted,
             verbose = verbose
         )
 
         curr_dict["compartment"] = comp
         curr_dict["subgraph_idx"] = idx
+        
+        if return_subgraphs:
+            curr_dict["G"] = subG
 
 
         if idx in debug_idx:
@@ -3920,8 +4006,372 @@ def all_compartment_conn_comp_subgraph_vector_stats(
             )
 
         all_dicts.append(curr_dict)
+        
+    if return_df:
+        return pd.DataFrame.from_records(all_dicts)
+    else:
+        return all_dicts
 
-    return all_dicts
+def skeleton_bbox(
+    G,
+    return_dict = True,
+    verbose = False,
+    suffix = "_nm",
+    ):
+    """
+    Purpose: To find the skeleton's bounding box
 
+    1) Generate the skeleton
+    2) Send the vertices to the bounding box
+    3) Return dict
+    """
+    verts,_ = nxu.skeleton(G,return_verts_edges=True)
+    bbox = nu.bouning_box_corners(verts,return_dict = return_dict)
+    
+    if return_dict:
+        bbox = {f"{k}{suffix}":v for k,v in bbox.items()}
+    if verbose:
+        print(f"bbox = {bbox}")
+        
+    return bbox
+
+def internal_branching_coordinates(
+    G,
+    verbose = False,):
+    """
+    Purpose: Calculate the internal branch
+    coordinates
+
+    Application: Can calculate the closest and farthest away 
+    internal branch points
+
+    Pseudocode: 
+    2) Find all nodes not the leaf nodes and record their endpoints
+    """
+    non_leaf = xu.non_leaf_nodes(G)
+    internal_coordinates = np.array([G.nodes[k]["endpoint_downstream"] for k in non_leaf])
+    if len(internal_coordinates) > 0:
+        internal_coordinates = np.vstack(internal_coordinates)
+
+    if verbose:
+        print(f"internal_coordinates = {internal_coordinates}")
+    return internal_coordinates
+
+def n_internal_branching_coordinates(G,**kwargs):
+    return len(nxu.internal_branching_coordinates(G,**kwargs))
+
+def internal_branching_coordinates_max_min(
+    G,
+    default_value = None,
+    verbose = False,
+    plot = False,
+    return_dict = False,
+    return_distance = False,
+    suffix = "_nm"):
+    """
+    Purpose: Find the farthest and closest
+    internal branching point
+
+    Pseudocode: 
+    1) Get the most upstream endpoint
+    2) Get all the internal branch points
+    3) Calculate the distance of all the internal branch points
+    4) Pick the largest and smallest distance
+    
+    Ex: 
+    nxu.internal_branching_coordinates_max_min(
+        subG,
+        plot = True,
+        return_dict = True,
+        verbose = True,
+    )
+    """
+
+    coord = nxu.most_upstream_coordinate(G)
+    branch_coords = nxu.internal_branching_coordinates(G)
+    if len(branch_coords) > 0:
+        dists = np.linalg.norm(branch_coords- coord,axis=1)
+        max_idx = np.argmax(dists)
+        min_idx = np.argmin(dists)
+        
+        max_dist = dists[max_idx]
+        min_dist = dists[min_idx]
+        
+        if verbose:
+            print(f"Max branch coord dist = {max_dist}")
+            print(f"Min branch coord dist = {min_dist}")
+
+        max_branch_coord = branch_coords[max_idx]
+        min_branch_coord = branch_coords[min_idx]
+
+    else:
+        max_branch_coord=max_branch_coord=max_dist=min_dist= default_value
+        
+        
+    if verbose:
+        print(f"max_branch_coord = {max_branch_coord}")
+        print(f"min_branch_coord = {min_branch_coord}")
+        
+    if plot:
+        ipvu.plot_skeleton(
+            *nxu.skeleton(G,return_verts_edges=True),
+            show_at_end = False
+        )
+        max_branch_color = "red"
+        min_branch_color = "blue"
+        start_coordinate = "black"
+        print(f"max_branch_color = {max_branch_color}, min_branch_color = {min_branch_color}, start_coordinate = {start_coordinate}")
+        ipvu.plot_multi_scatters(
+            scatters=[max_branch_coord,min_branch_coord,coord],
+            color=[max_branch_color,min_branch_color,start_coordinate],
+            new_figure=False,
+        )
+
+    if return_dict:
+        if return_distance:
+            return {
+                f"internal_branch_coordinate_max_dist{suffix}":max_dist,
+                f"internal_branch_coordinate_min_dist{suffix}":min_dist,
+            }
+        else:
+            if max_branch_coord is None:
+                max_branch_coord = min_branch_coord = [None,None,None]
+            return {
+                f"internal_branch_coordinate_max_x{suffix}":max_branch_coord[0],
+                f"internal_branch_coordinate_max_y{suffix}":max_branch_coord[1],
+                f"internal_branch_coordinate_max_z{suffix}":max_branch_coord[2],
+
+                f"internal_branch_coordinate_min_x{suffix}":min_branch_coord[0],
+                f"internal_branch_coordinate_min_y{suffix}":min_branch_coord[1],
+                f"internal_branch_coordinate_min_z{suffix}":min_branch_coord[2],
+            }
+       
+    if return_distance:
+        return max_dist,min_dist
+    else:
+        return max_branch_coord,min_branch_coord
+
+def internal_branching_stats(
+    G,
+    include_max_min_coordinates = True,
+    include_max_min_dist = True,
+    **kwargs):
+    curr_dict = dict(
+        n_internal_branching = nxu.n_internal_branching_coordinates(G)
+    )
+
+    if include_max_min_coordinates:
+        max_min_branch_dict = nxu.internal_branching_coordinates_max_min(
+            G,
+            return_distance = False,
+            return_dict = True,
+            **kwargs
+        )
+        
+        curr_dict.update(max_min_branch_dict)
+        
+    if include_max_min_dist:
+        max_min_branch_dict = nxu.internal_branching_coordinates_max_min(
+            G,
+            return_distance = True,
+            return_dict = True,
+            **kwargs
+        )
+        
+        curr_dict.update(max_min_branch_dict)
+    
+    return curr_dict
+
+default_small_endnodes_skeltal_length_min = 10_000
+def small_endnode_branches(
+    G,
+    dendrite_only = True,
+    skeletal_length_min = None,
+    exclude_soma_connected_nodes = True,
+    verbose = False,
+    ):
+    """
+    Purpose: To detect any end nodes
+    that are below a certain skeletal length
+    
+    Pseudocode: 
+    1) Find all of the leaf nodes
+    2) Find the skeletal length of all the leaf nodes
+    3) Identify any that are subthreshold
+    """
+    if dendrite_only:
+        G = nxu.dendrite_subgraph(G)
+    
+    if skeletal_length_min is None:
+        skeletal_length_min = default_small_endnodes_skeltal_length_min
+    
+    if nxu.soma_only_graph(G):
+        return []
+    
+    leaf_nodes = xu.leaf_nodes(G)
+    
+    if exclude_soma_connected_nodes:
+        leaf_nodes = np.setdiff1d(leaf_nodes,nxu.soma_connected_nodes(G))
+    
+    if verbose:
+        print(f"Leaf nodes (after soma connected excluded): {leaf_nodes}")
+        
+    leaf_nodes_sub_thresh = [k for k in leaf_nodes if G.nodes[k]["skeletal_length"] < skeletal_length_min]
+    
+    if verbose:
+        print(f"Leaf nodes (after skeletal length min {skeletal_length_min}) = {leaf_nodes_sub_thresh}")
+        
+    return leaf_nodes_sub_thresh
+
+def remove_small_endnode_branches(
+    G,
+    skeletal_length_min = None,
+    inplace = False,
+    loop_until_fail = True,
+    verbose=False,
+    **kwargs
+    ):
+    """
+    Purpose: To iteratively remove small endnode branches
+    from a graph
+
+    Application: When split into separate path graphs,
+    don't want more paths created just because have small
+    endnodes on them
+    """
+
+    if not inplace:
+        G = copy.deepcopy(G)
+
+    while True:
+        sm_end_branches = nxu.small_endnode_branches(
+            G,
+            #skeletal_length_min = 20_000,
+            verbose = False,
+            **kwargs
+        )
+
+        if verbose:
+            print(f"Soma End Node Branches = {sm_end_branches}")
+
+        G.remove_nodes_from(sm_end_branches)
+
+        if not loop_until_fail:
+            break
+        elif len(sm_end_branches) == 0:
+            break
+        else:
+            continue
+
+    return G
+
+def n_scholl_dict_from_scholl_dict(
+    scholl_dict,
+    return_named_dict = True,
+    prefix = ""
+    ):
+    
+    n_scholl_dict = {k:len(v) for k,v in scholl_dict.items()}
+    if return_named_dict:
+        n_scholl_dict = {f"n_scholl{prefix}_{int(k)}":v for k,v in n_scholl_dict.items()}
+    
+    return n_scholl_dict
+
+import pandas_utils as pu
+def subgraph_df_and_endnodes_df(
+    G,
+    remove_small_endnodes = True,
+    include_scholl_coordinates = True,
+    include_scholl_coordinates_adjusted = True,
+    include_n_scholl = True,
+    verbose = False,
+    endnode_name = "leaf_node",
+    ignore_axon = True,
+    ):
+    """
+    Purpose: To compute both the subgraph vector dataframe and the 
+    offshoot vector dataframes
+
+    Pseudocode: 
+    1) Calculate the subgraph df. WILL RETURN
+    2) For each compartment subgraph (each entry in the subgraph df):
+        For All end-nodes
+        a. Run the stats
+        b. Add a leaf node column
+        c. Add on the endpoint coordinate
+        d. Attributes to add on: 
+        - subgraph_idx
+        - endnode_idx
+    3) Compile into endnode dataframe
+    """
+
+    if remove_small_endnodes:
+        G = nxu.remove_small_endnode_branches(G,verbose= False)
+
+    soma_coordinate = nxu.soma_center(G)
+
+    #1) Calculate the subgraph df. WILL RETURN
+    subgraph_df= nxu.all_compartment_conn_comp_subgraph_vector_stats(
+        G,
+        verbose = False,
+        return_subgraphs=True,
+        return_df = True
+    )
+
+    endnode_dicts = []
+    for subgraph_dict in pu.df_to_dicts(subgraph_df):
+        subgraph_idx = subgraph_dict["subgraph_idx"]
+        leaf_nodes = subgraph_dict[f"{endnode_name}s"]
+        
+        if (subgraph_dict["compartment"] == "axon") and ignore_axon == True:
+            continue
+            
+        subG = subgraph_dict["G"]
+        if verbose:
+            print(f"    -- Working on subgraph {subgraph_idx} --")
+
+        for j,endnode in enumerate(leaf_nodes):
+            if verbose:
+                print(f"       -- working on endnode {leaf_nodes}")
+
+            endG = xu.shortest_path_graph_from_most_upstream(
+                subG,
+                endnode,
+            )
+
+            #a. Run the stats
+            curr_dict = nxu.vector_stats_from_G(
+                endG,
+                soma_coordinate=soma_coordinate,
+                include_scholl_coordinates = include_scholl_coordinates,
+                include_scholl_coordinates_adjusted = include_scholl_coordinates_adjusted,
+                include_n_scholl = include_n_scholl,
+                verbose = verbose,
+            )
+
+            #b. Add a leaf node column
+            curr_dict[f"{endnode_name}"] = endnode
+
+            #c. Add on the endpoint coordinate
+            endnode_coordinate = endG.nodes[endnode]["endpoint_downstream"]
+            curr_dict[f"{endnode_name}_coordinate_x_nm"] = endnode_coordinate[0]
+            curr_dict[f"{endnode_name}_coordinate_y_nm"] = endnode_coordinate[1]
+            curr_dict[f"{endnode_name}_coordinate_z_nm"] = endnode_coordinate[2]
+            curr_dict[f"{endnode_name}_dist"] = np.linalg.norm(
+                soma_coordinate - endnode_coordinate)
+
+            #d. Attributes to add on: subgraph_idx, endnode_idx
+            curr_dict["subgraph_idx"] = subgraph_idx
+            curr_dict[f"{endnode_name}_idx"] = j
+
+            endnode_dicts.append(curr_dict)
+
+    endnode_df = pd.DataFrame.from_records(endnode_dicts)
+
+    if verbose:
+        print(f"# of subgraph entries = {len(subgraph_df)}")
+        print(f"# of endnode entries = {len(endnode_df)}")
+
+    return subgraph_df,endnode_df
 
 import neuron_nx_utils as nxu
