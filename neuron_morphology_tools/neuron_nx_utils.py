@@ -3327,6 +3327,18 @@ def most_upstream_node_vector_stats(
 #     ):
 #     return np.sum([G.nodes[k]["skeletal_length"] for k in G.nodes()])
 
+def adjusted_scholl_coordinates(
+    array,
+    soma_coordinate,
+    upstream_endpoint,
+    verbose = False,
+    ):
+    
+    adjusted_offset = upstream_endpoint - soma_coordinate
+    if verbose:
+        print(f"Adjusted offset = {adjusted_offset}")
+    array = array - adjusted_offset
+    return array
 
 def scholl_coordinates(
     G,
@@ -3359,10 +3371,16 @@ def scholl_coordinates(
         
     if adjusted:
         upstream_endpoint = nxu.most_upstream_coordinate(G)
-        adjusted_offset = upstream_endpoint - soma_coordinate
-        if verbose:
-            print(f"Adjusted offset = {adjusted_offset}")
-        skeleton = skeleton - adjusted_offset
+        skeleton = adjusted_scholl_coordinates(
+            skeleton,
+            soma_coordinate = soma_coordinate,
+            upstream_endpoint=upstream_endpoint,
+            verbose = verbose)
+#         upstream_endpoint = nxu.most_upstream_coordinate(G)
+#         adjusted_offset = upstream_endpoint - soma_coordinate
+#         if verbose:
+#             print(f"Adjusted offset = {adjusted_offset}")
+#         skeleton = skeleton - adjusted_offset
         
     # limiting the skeleton and center to certain axes
     skeleton_axes = skeleton[:,:,axes]
