@@ -769,10 +769,11 @@ def limb_df_for_train_from_limb_df(
             graph_data["data"]["adjacency"],
             add_self_loops=add_self_loops)
 
-        sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
-        weight_values = ex_dict[f"x{suffix}"][:,sk_length_idx].astype("float")
+        
 
         if node_weight_name is not None:
+            sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
+            weight_values = ex_dict[f"x{suffix}"][:,sk_length_idx].astype("float")
             ex_dict[f"node_weight{suffix}"] = weight_values
 
         if edge_weight:
@@ -820,6 +821,7 @@ def neuron_df_for_train_from_limb_df(
     graph_type = "binary_tree",#"complete_graph"
     add_density_to_graph_data = False,
     verbose =False,
+    verbose_time = False,
     ):
     
     if add_density_to_graph_data:
@@ -845,10 +847,22 @@ def neuron_df_for_train_from_limb_df(
             limb_attributes_to_add_to_branches,np.union1d(attributes_pool1,attributes_pool2)
         )
     
-    unique_seg_split = pu.filter_to_first_instance_of_unique_column(
-        df[["segment_id","split_index"]],
-        column_name=["segment_id","split_index"]
+    st = time.time()
+    
+    # the new faster way of splitting the dataframe
+    all_dfs,keys = pu.split_df_by_groupby_column(
+        df,
+        column = ["segment_id","split_index"],
+        return_keys=True,
+        verbose = False,
     )
+#     unique_seg_split = pu.filter_to_first_instance_of_unique_column(
+#         df[["segment_id","split_index"]],
+#         column_name=["segment_id","split_index"]
+#     )
+    if verbose_time:
+        print(f"time for filter_to_first_instance_of_unique_column = {time.time() - st}")
+        st = time.time()
     
     if edge_weight:
         add_self_loops = True
@@ -856,9 +870,19 @@ def neuron_df_for_train_from_limb_df(
         add_self_loops = False
 
     new_dicts = []
-    segs_splits = unique_seg_split.index.to_numpy()
-    for segment_id,split_index in tqdm(segs_splits):
-        curr_df = df.query(f"(segment_id=={segment_id}) and (split_index == {split_index})")
+    #segs_splits = unique_seg_split.index.to_numpy()
+    #for segment_id,split_index in tqdm(segs_splits):
+    
+    for curr_df in tqdm(all_dfs):
+        if verbose_time:
+            global_time = time.time()
+            st = time.time()
+            
+#         curr_df = df.query(f"(segment_id=={segment_id}) and (split_index == {split_index})")
+        
+#         if verbose_time:
+#             print(f"time for dataframe query = {time.time() - st}")
+#             st = time.time()
 
         if sort_attributes is not None:
             curr_df = pu.sort_df_by_column(
@@ -873,6 +897,10 @@ def neuron_df_for_train_from_limb_df(
             }
         else:
             limb_attributes_to_add = None
+            
+        if verbose_time:
+            print(f"time for BEFORE combine_limb_graph_data = {time.time() - st}")
+            st = time.time()
 
         graph_data,clust_matrix = nxio.combine_limb_graph_data(
             graph_data = curr_df["graph_data"].to_list(),
@@ -880,10 +908,16 @@ def neuron_df_for_train_from_limb_df(
             limb_attributes_to_add=limb_attributes_to_add
         )
         
+        if verbose_time:
+            print(f"time for combine_limb_graph_data = {time.time() - st}")
+            st = time.time()
+        
         if add_pool_suffix or hierarchical:
             suffix = "_pool0"
         else:
             suffix = ""
+            
+        
 
         ex_dict = pu.df_to_dicts(curr_df.iloc[:1,:])[0]
         ex_dict[f"names{suffix}"] = graph_data["data"]["nodelist"]
@@ -893,6 +927,10 @@ def neuron_df_for_train_from_limb_df(
             graph_data["data"]["adjacency"],
             bidirectional = True,
             add_self_loops=add_self_loops)
+        
+        if verbose_time:
+            print(f"time for assigning nodelist,feautres,feature_matrix and edge_index = {time.time() - st}")
+            st = time.time()
         
         sk_length_idx = np.where(np.array(ex_dict[f"x_features{suffix}"]) == node_weight_name)[0][0]
         weight_values = ex_dict[f"x{suffix}"][:,sk_length_idx].astype("float")
@@ -908,6 +946,9 @@ def neuron_df_for_train_from_limb_df(
             else:
                 ex_dict[f"edge_weight{suffix}"] = np.array([]).astype('float')
             
+        if verbose_time:
+            print(f"time for calculating edge and node weights = {time.time() - st}")
+            st = time.time()
             
         if hierarchical or export_pool1_clusters:
             ex_dict["pool1_names"] = limb_idx
@@ -960,9 +1001,21 @@ def neuron_df_for_train_from_limb_df(
             ex_dict["x_features_pool2"] =  attributes_pool2
             
             
+        if verbose_time:
+            print(f"time for hierarchical = {time.time() - st}")
+            st = time.time()
+            
         del ex_dict["graph_data"]
+        
+        if verbose_time:
+            print(f"time for graph data deletion = {time.time() - st}")
+            st = time.time()
 
         new_dicts.append(ex_dict)
+        
+        if verbose_time:
+            print(f"Time per segment: {time.time() - global_time}")
+            global_time = time.time()
 
 
     df_with_labels = pd.DataFrame.from_records(new_dicts)
@@ -1098,6 +1151,81 @@ def add_density_to_graph_data_in_df(
             in_place = in_place,
             replace_features=replace_features,
             verbose=verbose)
+
+    return df
+
+def add_skeletal_length_xyz_to_df_x_features_x_pool(
+    df,
+    verbose = False,
+    ):
+    """
+    Purpsose: Want to add skeletal length to the features list
+    and x features if didn't already exist
+
+    Pseudocode: 
+    For each row in the dataframe: 
+    1) Check if the [skeletal_length_x/y,z] in the features
+    if not
+    2) Estimate the skeletal_length_x/y/z using the upstream_theta/phi
+    for all of the branches
+    3) Add the  skeletal_length_x/y/z names to the x_features_pool0
+    4) 
+    """
+
+    for i in tqdm(range(len(df))):
+        #curr_dict = df_with_labels.iloc[0,:].to_dict()
+        feature_names = df.loc[i,"x_features_pool0"]
+
+        skeletal_length_axes_names = [
+            "skeletal_length_x",
+            "skeletal_length_y",
+            "skeletal_length_z",
+        ]
+
+        skeleton_angles_names = [
+         'skeletal_length',
+         'skeleton_vector_upstream_theta',
+         'skeleton_vector_upstream_phi',
+         'skeleton_vector_downstream_theta',
+         'skeleton_vector_downstream_phi',
+        ]
+
+        if np.any([k not in feature_names for k in skeletal_length_axes_names]):
+            x = df.loc[i,"x_pool0"]
+            if verbose:
+                print(f"Adding skeletal length features")
+
+            for k in skeleton_angles_names:
+                exec(f"{k}_idx = [i for i,k in enumerate(feature_names) if k == '{k}'][0]")
+
+                if verbose:
+                    print(f"{k}_idx = {eval(f'{k}_idx')}")
+
+            sk_theta = np.mean(
+                x[:,[skeleton_vector_upstream_theta_idx,skeleton_vector_downstream_theta_idx]],
+                axis = 1
+            )
+            sk_phi = np.mean(
+                x[:,[skeleton_vector_upstream_phi_idx,skeleton_vector_downstream_phi_idx]],
+                axis = 1
+            )
+
+            sk_len = x[:,skeletal_length_idx]
+
+            #calculate the skeletal lengths in all directions
+            sk_xyz = nu.cartesian_3D_from_polar(
+                r = sk_len,
+                theta = sk_theta,
+                phi = sk_phi ,
+                return_array = True,
+            )
+
+            #store the values back in the 
+            x = np.hstack([x,sk_xyz])
+            feature_names = feature_names + skeletal_length_axes_names
+
+            df.at[i,"x_features_pool0"] = feature_names
+            df.at[i,"x_pool0"] = x
 
     return df
 
