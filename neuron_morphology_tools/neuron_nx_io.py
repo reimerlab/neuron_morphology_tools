@@ -1195,8 +1195,9 @@ def add_skeletal_length_xyz_to_df_x_features_x_pool(
             if verbose:
                 print(f"Adding skeletal length features")
 
+            
             for k in skeleton_angles_names:
-                exec(f"{k}_idx = [i for i,k in enumerate(feature_names) if k == '{k}'][0]")
+                exec(f"{k}_idx = [i for i,k in enumerate(feature_names) if k == '{k}'][0]",locals(),globals())
 
                 if verbose:
                     print(f"{k}_idx = {eval(f'{k}_idx')}")
