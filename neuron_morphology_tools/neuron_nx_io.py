@@ -1223,7 +1223,7 @@ def add_skeletal_length_xyz_to_df_x_features_x_pool(
 
             #store the values back in the 
             x = np.hstack([x,sk_xyz])
-            feature_names = feature_names + skeletal_length_axes_names
+            feature_names = list(feature_names) + skeletal_length_axes_names
 
             df.at[i,"x_features_pool0"] = feature_names
             df.at[i,"x_pool0"] = x
