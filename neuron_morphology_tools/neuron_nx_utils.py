@@ -3799,6 +3799,7 @@ def skeleton_edge_df_with_edge_graph_with_compartments(
     verbose = True,
     plot = False,
     return_edge_G = True,
+    remove_starter_branches = False,
     ):
 
     """
@@ -3816,6 +3817,8 @@ def skeleton_edge_df_with_edge_graph_with_compartments(
     store all in dataframe for the edges
 
     """
+    if remove_starter_branches:
+        G = nxu.remove_small_starter_branches(G)
 
     comp_skeletons = nxu.all_compartment_skeletons(G,plot=False,)
 
