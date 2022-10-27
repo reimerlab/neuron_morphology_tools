@@ -3123,17 +3123,27 @@ def fix_width_inf_nan(
     """
     nodes_fixed = []
     for n in nxu.limb_branch_nodes(G):
-        if nu.is_nan_or_inf(G.nodes[n]["width"]):
+        try:
+            curr_wid = G.nodes[n]["width"]
+        except:
+            continue
+        if nu.is_nan_or_inf(curr_wid):
             nodes_fixed.append(n)
             #1a) Try and get an upstream width
             up_node = nxu.upstream_limb_branch(G,n)
             new_width = default_value
             if up_node is not None:
-                new_width = G.nodes[up_node]["width_new"]["no_spine_median_mesh_center"]
+                try:
+                    new_width = G.nodes[up_node]["width_new"]["no_spine_median_mesh_center"]
+                except:
+                    pass
             else:
                 d_nodes = nxu.downstream_limb_branch(G,n)
                 if d_nodes is not None:
-                    new_width = np.mean([G.nodes[k]["width_new"]["no_spine_median_mesh_center"] for k in d_nodes])
+                    try:
+                        new_width = np.mean([G.nodes[k]["width_new"]["no_spine_median_mesh_center"] for k in d_nodes])
+                    except:
+                        pass
 
             # do the replacement of all the width values
             G.nodes[n]["width"] =new_width
@@ -4421,5 +4431,264 @@ def node_endpoint(G,node):
     return np.vstack([
         G.nodes[n]["endpoint_downstream"]
         for n in node])
+
+
+def coordinates_from_coordinate_type(
+    G,
+    node,
+    coordinate_type,
+    ):
+    node_dict = G.nodes[node]
+    
+    if coordinate_type == "skeleton":
+        coordinate_type = "skeleton_data"
+        
+    if coordinate_type == "endpoints":
+        coordinates = np.vstack([node_dict["endpoint_upstream"],
+                                 node_dict["endpoint_downstream"],]).reshape(-1,3)
+    else:
+        coordinates = np.array(node_dict[coordinate_type]).reshape(-1,3)
+        
+    return coordinates
+def coordinate_array_with_node_map_from_G(
+    G,
+    coordinate_type = "skeleton",
+    nodes = None,
+    suppress_errors = False,
+    verbose = True,
+    ):
+    """
+    Purpose: to get two parallel arrays
+    of coordinates pulled from a node somhow
+    (skeletons points, midpoints, endpoints...)
+    and the node name
+
+    Pseudocode: 
+    1) For each node in limb branch:
+    a. extract the coordinates
+    b. Create an array of the same lenght with name of node
+
+    Possible coordinate types: 
+    1) skeleton_data/skeleton
+    2) endpoints, endpoint_upstream, endpoint_downstream
+    3) mesh_center
+    """
+    if nodes is None:
+        nodes =  nxu.limb_branch_nodes(G)
+
+    coordinates_array = []
+    node_array = []
+    for node in nodes:
+        
+        try:
+            coordinates = coordinates_from_coordinate_type(
+                G,
+                node,
+                coordinate_type=coordinate_type,
+            )
+            
+        except Exception as e:
+            if suppress_errors:
+                continue
+            else:
+                raise Exception(e)
+
+        coordinates_array.append(coordinates)
+        node_array += [node]*len(coordinates)
+
+    if len(coordinates_array) > 0:
+        coordinates_array = np.vstack(coordinates_array)
+
+    node_array = np.array(node_array)
+
+    if verbose:
+        print(f"# of coordinates = {len(coordinates_array)}")
+        
+    return coordinates_array,node_array
+
+def closest_node_to_coordinates(
+    G,
+    coordinates,
+    node_coordinate_type = "skeleton",
+    closest_idx_algorithm = "linalg",
+    verbose = False,
+    suppress_errors = False,
+    ):
+    """
+    Purpose: map a coordinate(s) to the closest
+    branch (using branches' endpoints, 
+    upstream endpoints or all skeleton data, midpoint, etc..)
+
+    Pseudocode: 
+    1) Get a mapping of all of the coordinates to 
+    the node name
+    2) Do a kdtree mapping of coordinates to 
+    list of coordinates (or iteratively do the linalg.norm)
+    to find the closest idx
+    3) Map closest idx to the label
+    """
+
+    graph_coords,graph_labels = nxu.coordinate_array_with_node_map_from_G(
+        G,
+        suppress_errors=suppress_errors,
+        coordinate_type = node_coordinate_type,
+        verbose = False,
+    )
+
+    idx = nu.closest_idx_for_each_coordinate(
+        array=coordinates,
+        array_for_idx=graph_coords,
+        closest_idx_algorithm = closest_idx_algorithm,
+        verbose = verbose,
+    )
+
+    closest_branch = graph_labels[idx]
+    if verbose:
+        print(f"closest_branch = {closest_branch}")
+        
+    return closest_branch
+'''
+def cluster_and_downstream_filter_coordinates_old(
+    G,
+    coordinates,
+    radius = 5000,
+    mapping_node_coordinate_type = "skeleton",
+    filter_away_downstream_nodes = True,
+    return_coordinates = True,
+    output_coordinates_type = "endpoint_upstream",
+    verbose = False,
+    
+    ):
+    """
+    Purpose: Given a set of edit coordinates want to filter them
+    to non-redundant coordinates with the option of filtering
+    away any coordinates that are downstream of others 
+    (can return nodes or coordinates)
+
+    Pseudocode: 
+    1) Filter the coordinates with a radius thresholding
+    -- how to keep only those most upstream
+    2) Map the filtered coordinates to the closest branches
+    3) (Optional) Filter away any downstream branches
+    4) Return the branches are convert them to coordinates
+    """
+
+
+    #1) Filter the coordinates with a radius thresholding
+    mean_coordinates = nu.mean_coordinates_from_radius_threshold_clustering(
+            coordinates,
+            radius = radius,
+    )
+    
+    if verbose:
+        print(f"# of filtered coordinates = {len(mean_coordinates)} (vs {(len(coordinates))} original)")
+    
+    #2) Map the filtered coordinates to the closest branches
+    nodes = nxu.closest_node_to_coordinates(
+        G,
+        mean_coordinates,
+        node_coordinate_type = mapping_node_coordinate_type,
+        suppress_errors=suppress_errors
+    )
+
+    if verbose:
+        print(f"Matching nodes = {nodes}")
+
+    #3) (Optional) Filter away any downstream branches
+    if filter_away_downstream_nodes:
+        nodes = xu.filter_away_downstream_nodes(G,nodes)
+        if verbose:
+            print(f"Nodes after filtering away downstream = {nodes}")
+
+    #4) Return the branches are convert them to coordinates
+    if return_coordinates:
+        return np.vstack([
+            nxu.coordinates_from_coordinate_type(G,n,coordinate_type=output_coordinates_type)
+            for n in nodes
+        ])
+    else:
+        return nodes'''
+    
+import neuron_nx_stats as nxst
+def cluster_and_downstream_filter_coordinates(
+    G,
+    coordinates,
+    radius = 5000,
+    mapping_node_coordinate_type = "skeleton",
+    filter_away_downstream_nodes = True,
+    #return_coordinates = True,
+    #output_coordinates_type = "endpoint_upstream",
+    verbose = False,
+    return_downstream_skeletal_length = False,
+    suppress_errors=True,
+    ):
+    """
+    Purpose: Given a set of edit coordinates want to filter them
+    to non-redundant coordinates with the option of filtering
+    away any coordinates that are downstream of others 
+    (can return nodes or coordinates)
+
+    Pseudocode: 
+    1) Filter the coordinates with a radius thresholding
+    -- how to keep only those most upstream
+    2) Map the filtered coordinates to the closest branches
+    3) (Optional) Filter away any downstream branches
+    4) Return the branches are convert them to coordinates
+    """
+
+
+    #2) Map the filtered coordinates to the closest branches
+    nodes = nxu.closest_node_to_coordinates(
+        G,
+        coordinates,
+        node_coordinate_type = mapping_node_coordinate_type,
+        suppress_errors=suppress_errors,
+    )
+
+    if verbose:
+        print(f"Matching nodes = {nodes}")
+
+    #3) (Optional) Filter away any downstream branches
+    if filter_away_downstream_nodes:
+        nodes = xu.filter_away_downstream_nodes(G,nodes)
+        if verbose:
+            print(f"Nodes after filtering away downstream = {nodes}")
+            
+    if return_downstream_skeletal_length:
+        downstream_skeletal_lengths = np.array(
+            [nxst.skeletal_length_downstream(G,n,include_self = True)
+             for n in nodes]
+        )
+    
+    # --- want to gather length information before filtering ----
+    coordinates_upstream = np.vstack([
+            nxu.coordinates_from_coordinate_type(G,n,coordinate_type="endpoint_upstream")
+            for n in nodes
+    ])
+        
+    #1) Filter the coordinates with a radius thresholding
+    mean_coordinates,conn_comp = nu.mean_coordinates_from_radius_threshold_clustering(
+            coordinates_upstream,
+            radius = radius,
+            return_clustering_idx = True,
+    )
+    
+    if return_downstream_skeletal_length:
+        downstream_skeletal_lengths = [np.sum(downstream_skeletal_lengths[k])
+                                      for k in conn_comp]
+    
+    if verbose:
+        print(f"# of filtered coordinates = {len(mean_coordinates)} (vs {(len(coordinates_upstream))} original)")
+        
+    if return_downstream_skeletal_length:
+        return mean_coordinates,downstream_skeletal_lengths
+    else:
+        return mean_coordinates
+
+#     #4) Return the branches are convert them to coordinates
+#     if return_coordinates:
+#         return 
+#     else:
+#         return nodes
 
 import neuron_nx_utils as nxu

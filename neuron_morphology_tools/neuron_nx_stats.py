@@ -396,6 +396,17 @@ def statistics_survey_from_graph(
                 
     return all_data_dicts
 
-
+def skeletal_length_downstream(
+    G,
+    node,
+    include_self=True,
+    ):
+    
+    return xu.sum_downstream_attribute(
+        G,
+        node,
+        attribute="skeletal_length",
+        include_self = include_self
+    )
 
 import neuron_nx_stats as nxst
