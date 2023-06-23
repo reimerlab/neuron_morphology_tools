@@ -1,9 +1,9 @@
 # ----------- For outputing for use in GNN
-import system_utils as su
+from python_tools import system_utils as su
 import neuron_nx_feature_processing as nxf
 import neuron_nx_utils as nxu
 import networkx as nx
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 from pathlib import Path
 import numpy as np
 import time
@@ -209,13 +209,13 @@ def export_GNN_info_dict(
     
     
 
-import system_utils as su
-import networkx_utils as xu
+from python_tools import system_utils as su
+from python_tools import networkx_utils as xu
 import pandas as pd
 
 import pandas as pd
-import numpy_utils as nu
-import pandas_utils as pu
+from python_tools import numpy_utils as nu
+from python_tools import pandas_utils as pu
 def feature_df_from_gnn_info(
     gnn_info,
     return_data_labels_split = True,
@@ -615,7 +615,7 @@ def compressed_dict_from_G(
     
     return curr_dict
 
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 import copy
 def combine_limb_graph_data(
     graph_data,
@@ -707,7 +707,7 @@ def combine_limb_graph_data(
     
     
     
-from tqdm_utils import tqdm
+from python_tools.tqdm_utils import tqdm
 import neuron_nx_io as nxio
 import pandas as pd
 import copy
@@ -1022,8 +1022,8 @@ def neuron_df_for_train_from_limb_df(
     return df_with_labels
 
 
-import numpy_utils as nu
-import general_utils as gu
+from python_tools import numpy_utils as nu
+from python_tools import general_utils as gu
 def aggregate_embedding_df_by_seg_split(
     df,
     embed_cols,

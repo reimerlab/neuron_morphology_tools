@@ -3,10 +3,10 @@ Purpose: tools that will help process a neuron that
 is represented as a networkx graph
 
 """
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 import numpy as np
 import pandas as pd
-import system_utils as su
+from python_tools import system_utils as su
 
 soma_node_name_global = "S0"
 node_label = "u"
@@ -210,7 +210,7 @@ import neuron_nx_utils as nxu
 import copy
 
 import copy
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 
 def remove_node(
     G,
@@ -534,7 +534,7 @@ def export_swc_df(G,**kwargs):
     return pd.DataFrame.from_records(export_swc_dicts(G,return_df=True,**kwargs))
 
 
-import file_utils as fileu
+from python_tools import file_utils as fileu
 def export_swc_file(
     G,
     filename=None,
@@ -587,7 +587,7 @@ def morphometrics(
         
     if apply_basal_dendrite_swap:
         # --- fixed so dendrite compartment will be changed to basal and recognized as dendrite ---
-        import pandas_utils as pu
+        from python_tools import pandas_utils as pu
         def basal_rename(row):
             if row["type"] == compartment_index_swc_map["dendrite"]:
                 return compartment_index_swc_map["basal"]
@@ -939,7 +939,7 @@ def skeleton_from_node(
         np.arange(1,len(skeleton_points))]).T
     return skeleton_points[sk_idx]
     
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 def skeleton_coordinates_from_G(
     G,
     include_upstream_node = False,
@@ -1980,9 +1980,9 @@ def plot_inter_attribute_intervals(
         
     return ax
 
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 import time
-from tqdm_utils import tqdm
+from python_tools.tqdm_utils import tqdm
 def inter_attribute_intervals_from_G(
     G,
     attribute,
@@ -2112,9 +2112,9 @@ def n_data_attribues(G,attribute,n=None,exclude_presyn = True):
 
 
 
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 import networkx as nx
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 
 def inter_attribute_G_preprocessing(
     G,
@@ -2256,7 +2256,7 @@ def inter_attribute_intervals_dict_from_neuron_G(
 
 
 # =============== For the random shuffling (6320)==================
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 def shuffle_upstream_dist_on_data_attribute(
     G,
     attribute = None,
@@ -2550,7 +2550,7 @@ def skeleton_soma_to_limb_start(G):
     return nodes,edges
 
     
-import ipyvolume_utils as ipvu
+from python_tools import ipyvolume_utils as ipvu
 import numpy as np
 
 def skeleton(
@@ -2698,8 +2698,8 @@ def skeleton_width_data_from_node(
     assert len(skeleton_points) == len(width_array)
     return skeleton_points,width_array
 
-import mesh_utils as meshu
-import numpy_utils as nu
+from python_tools import mesh_utils as meshu
+from python_tools import numpy_utils as nu
 def skeleton_width_compartment_arrays_from_G(
     G,
     compartments = None,
@@ -3080,7 +3080,7 @@ def fix_flipped_skeleton(
 
     return G
 
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 
 def upstream_limb_branch(G,n):
     up_node = xu.upstream_node(G,n)
@@ -3798,11 +3798,11 @@ def plot_all_skeleton_compartments(G,mesh=None,**kwargs):
     
     
 import numpy as np
-import ipyvolume_utils as ipvu
-import networkx_utils as xu
+from python_tools import ipyvolume_utils as ipvu
+from python_tools import networkx_utils as xu
 import numpy as np
 import pandas as pd
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 
 def skeleton_edge_df_with_edge_graph_with_compartments(
     G,
@@ -4308,7 +4308,7 @@ def n_scholl_dict_from_scholl_dict(
     
     return n_scholl_dict
 
-import pandas_utils as pu
+from python_tools import pandas_utils as pu
 def subgraph_df_and_endnodes_df(
     G,
     remove_small_endnodes = True,

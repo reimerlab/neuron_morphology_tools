@@ -1,7 +1,7 @@
-import ipyvolume_utils as ipvu
+from python_tools import ipyvolume_utils as ipvu
 import numpy as np
 import neuron_nx_utils as nxu
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 
 def skeletal_length(skeleton):
     if len(skeleton) == 0:

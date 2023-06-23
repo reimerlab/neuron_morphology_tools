@@ -5,11 +5,11 @@ compute statistics over a graph object
 
 """
 
-import pandas_utils as pu
-import networkx_utils as xu
+from python_tools import pandas_utils as pu
+from python_tools import networkx_utils as xu
 import neuron_nx_utils as nxu
 import pandas as pd
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 
 node_identifier = "u"
 
@@ -220,7 +220,7 @@ def skeleton_bounding_box(
             
             
 # ------------ For computing the overall statistics of a graph ----------#
-import general_utils as gu
+from python_tools import general_utils as gu
 
 statistics_survey_attributes_to_sum = [
             'skeletal_length',

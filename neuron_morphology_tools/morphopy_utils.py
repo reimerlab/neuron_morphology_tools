@@ -157,7 +157,7 @@ import numpy as np
 from scipy.stats import wasserstein_distance
 from itertools import combinations,permutations
 import seaborn as sns
-import pandas_utils as pu
+from python_tools import pandas_utils as pu
 
 def morphometrics(
     N=None,

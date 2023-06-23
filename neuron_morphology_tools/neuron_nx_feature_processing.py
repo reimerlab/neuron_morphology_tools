@@ -1,8 +1,8 @@
 import neuron_nx_utils as nxu
-import numpy_utils as nu
+from python_tools import numpy_utils as nu
 import networkx as nx
 
-import networkx_utils as xu
+from python_tools import networkx_utils as xu
 import numpy as np
 import copy
 
