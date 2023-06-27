@@ -1,7 +1,5 @@
-from python_tools import ipyvolume_utils as ipvu
+
 import numpy as np
-import neuron_nx_utils as nxu
-from python_tools import numpy_utils as nu
 
 def skeletal_length(skeleton):
     if len(skeleton) == 0:
@@ -27,7 +25,7 @@ def cirle_intersections(
     
     Ex:
     import ipyvolume as ipv
-    import neuron_skeleton_utils as nsku
+    from neuron_morphology_tools import neuron_skeleton_utils as nsku
 
     segment_id = 864691134884743930
     split_index = 0
@@ -97,7 +95,7 @@ def cirle_intersections(
         print(f"Distances of scatters = {np.linalg.norm(scatters_axes - soma_center_axes,axis=1)}")
 
     if plot:
-        import neuron_visualizations as nviz
+        from meshAfterParty import neuron_visualizations as nviz
         print(f"Plotting the crossing edges (green) with intersections (red)")
         scatters = skeleton[cross_map].reshape(-1,orig_dim)
         nviz.plot_objects(
@@ -111,5 +109,12 @@ def cirle_intersections(
     
     return intersection_points
 
-import neuron_skeleton_utils as nsku
     
+#--- from neuron_morphology_tools ---
+from . import neuron_nx_utils as nxu
+
+#--- from python_tools ---
+from python_tools import ipyvolume_utils as ipvu
+from python_tools import numpy_utils as nu
+
+from . import neuron_skeleton_utils as nsku

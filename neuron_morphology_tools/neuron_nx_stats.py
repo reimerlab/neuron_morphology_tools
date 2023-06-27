@@ -1,15 +1,14 @@
-"""
+'''
+
 Purpose: To create functions that can 
 compute statistics over a graph object
 (whether it be a full neuron graph or a subgraph)
 
-"""
 
-from python_tools import pandas_utils as pu
-from python_tools import networkx_utils as xu
-import neuron_nx_utils as nxu
+'''
 import pandas as pd
-from python_tools import numpy_utils as nu
+import time
+
 
 node_identifier = "u"
 
@@ -62,7 +61,6 @@ def starting_coordinate(
         return {f"starting_coordinate_{k}":v for k,v in zip(["x","y","z"],
                                                     array)}
 
-import time
 def summary_statistic_over_dynamic_attribute(
     G,
     node,
@@ -131,7 +129,6 @@ def summary_statistic_over_synapses(
     **kwargs
     )
 
-import neuron_nx_feature_processing as nxf
 def add_any_missing_node_features(G,**kwargs):
     return nxf.add_any_missing_node_features(G)
 
@@ -150,7 +147,6 @@ def summary_statistic_over_spines(
     **kwargs
     )
 
-import time
 def add_summary_statistic_over_dynamic_attributes_to_G(
     G,
     attributes = ("synapses","spines"),
@@ -220,7 +216,6 @@ def skeleton_bounding_box(
             
             
 # ------------ For computing the overall statistics of a graph ----------#
-from python_tools import general_utils as gu
 
 statistics_survey_attributes_to_sum = [
             'skeletal_length',
@@ -409,4 +404,14 @@ def skeletal_length_downstream(
         include_self = include_self
     )
 
-import neuron_nx_stats as nxst
+#--- from neuron_morphology_tools ---
+from . import neuron_nx_feature_processing as nxf
+from . import neuron_nx_utils as nxu
+
+#--- from python_tools ---
+from python_tools import general_utils as gu
+from python_tools import networkx_utils as xu
+from python_tools import numpy_utils as nu
+from python_tools import pandas_utils as pu
+
+from . import neuron_nx_stats as nxst

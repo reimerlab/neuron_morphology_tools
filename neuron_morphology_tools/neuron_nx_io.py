@@ -1,12 +1,10 @@
-# ----------- For outputing for use in GNN
-from python_tools import system_utils as su
-import neuron_nx_feature_processing as nxf
-import neuron_nx_utils as nxu
-import networkx as nx
-from python_tools import networkx_utils as xu
+
 from pathlib import Path
+import copy
+import networkx as nx
 import numpy as np
-import time
+import pandas as pd
+import time# ----------- For outputing for use in GNN
 def export_GNN_info_dict(
     G,
     features_to_output,
@@ -209,13 +207,7 @@ def export_GNN_info_dict(
     
     
 
-from python_tools import system_utils as su
-from python_tools import networkx_utils as xu
-import pandas as pd
 
-import pandas as pd
-from python_tools import numpy_utils as nu
-from python_tools import pandas_utils as pu
 def feature_df_from_gnn_info(
     gnn_info,
     return_data_labels_split = True,
@@ -276,7 +268,7 @@ def G_from_adj_feature_dict(
     stored in the adjacency dict information
     
     Ex: 
-    import neuron_nx_io as nxio
+    from neuron_morphology_tools import neuron_nx_io as nxio
     G_rec = nxio.G_from_adj_feature_dict(
         filepath = filepaths[1],
         plot = True,
@@ -615,8 +607,6 @@ def compressed_dict_from_G(
     
     return curr_dict
 
-from python_tools import numpy_utils as nu
-import copy
 def combine_limb_graph_data(
     graph_data,
     limb_idx,
@@ -707,10 +697,6 @@ def combine_limb_graph_data(
     
     
     
-from python_tools.tqdm_utils import tqdm
-import neuron_nx_io as nxio
-import pandas as pd
-import copy
 
 def limb_df_for_train_from_limb_df(
     df,
@@ -1022,8 +1008,6 @@ def neuron_df_for_train_from_limb_df(
     return df_with_labels
 
 
-from python_tools import numpy_utils as nu
-from python_tools import general_utils as gu
 def aggregate_embedding_df_by_seg_split(
     df,
     embed_cols,
@@ -1034,7 +1018,7 @@ def aggregate_embedding_df_by_seg_split(
     """
     Purpose: Want a combined embedding from all the limbs
     """
-    import cell_type_utils as ctu
+    from meshAfterParty import cell_type_utils as ctu
     unique_seg_split = pu.filter_to_first_instance_of_unique_column(
         df[["segment_id","split_index"]],
         column_name=["segment_id","split_index"]
@@ -1230,4 +1214,16 @@ def add_skeletal_length_xyz_to_df_x_features_x_pool(
 
     return df
 
-import neuron_nx_io as nxio
+#--- from neuron_morphology_tools ---
+from . import neuron_nx_feature_processing as nxf
+from . import neuron_nx_utils as nxu
+
+#--- from python_tools ---
+from python_tools import general_utils as gu
+from python_tools import networkx_utils as xu
+from python_tools import numpy_utils as nu
+from python_tools import pandas_utils as pu
+from python_tools import system_utils as su
+from python_tools.tqdm_utils import tqdm
+
+from . import neuron_nx_io as nxio

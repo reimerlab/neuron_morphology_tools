@@ -1,15 +1,25 @@
-"""
+'''
+
 Purpose: Utils functions for using the 
 morphopy module to compute morphology statistics
 of a neuron
 
 cell types were saved in https://raw.githubusercontent.com/berenslab/mini-atlas/master/data/m1_patchseq_meta_data.csv
 
-"""
 
+'''
+from itertools import combinations,permutations
 from morphopy.neurontree import NeuronTree as nt
+from morphopy.neurontree.utils import angle_between
 from morphopy.neurontree.utils import get_standardized_swc
+from scipy.stats import wasserstein_distance
+import copy
+import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import pandas as pd
+import seaborn as sns
+
 
 
 exc_features_berenslab = ['"apical" branch points' ,'"apical" height',
@@ -117,8 +127,6 @@ def swc_rotated_resampled(
         return N.to_swc()
     
     
-import seaborn as sns
-import matplotlib.pyplot as plt
 def plot_ntree(
     N,
     figsize = (10,5),
@@ -150,14 +158,6 @@ def plot_ntree(
     
     
 # ---------- Computing the morphology df -----------
-from morphopy.neurontree.utils import angle_between
-import networkx as nx
-import copy
-import numpy as np
-from scipy.stats import wasserstein_distance
-from itertools import combinations,permutations
-import seaborn as sns
-from python_tools import pandas_utils as pu
 
 def morphometrics(
     N=None,
@@ -450,4 +450,7 @@ def morphometrics(
     return morphometry_data
 
 
-import morphopy_utils as mpu
+#--- from python_tools ---
+from python_tools import pandas_utils as pu
+
+from . import morphopy_utils as mpu

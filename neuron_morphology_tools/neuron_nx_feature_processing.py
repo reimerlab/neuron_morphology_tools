@@ -1,10 +1,8 @@
-import neuron_nx_utils as nxu
-from python_tools import numpy_utils as nu
-import networkx as nx
 
-from python_tools import networkx_utils as xu
-import numpy as np
 import copy
+import networkx as nx
+import numpy as np
+
 
 def features_list(
     G,
@@ -15,7 +13,7 @@ def features_list(
     Purpose: Find all of the current features
     
     Ex: 
-    import neuron_nx_feature_processing as nxf
+    from neuron_morphology_tools import neuron_nx_feature_processing as nxf
     nxf.features_list(G)
     """
     if limb_branch_features:
@@ -440,4 +438,11 @@ def filter_G_features(
 
 
 
-import neuron_nx_feature_processing as nxf
+#--- from neuron_morphology_tools ---
+from . import neuron_nx_utils as nxu
+
+#--- from python_tools ---
+from python_tools import networkx_utils as xu
+from python_tools import numpy_utils as nu
+
+from . import neuron_nx_feature_processing as nxf

@@ -1,12 +1,17 @@
-"""
+'''
+
 Purpose: tools that will help process a neuron that
 is represented as a networkx graph
 
-"""
-from python_tools import networkx_utils as xu
+
+'''
+from pykdtree.kdtree import KDTree
+import copy
+import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandas as pd
-from python_tools import system_utils as su
+import time
 
 soma_node_name_global = "S0"
 node_label = "u"
@@ -52,7 +57,6 @@ default_upstream_dist_max = 6000
 default_scholl_interval = 10_000
 
 
-import copy
 
 
 def delete_attributes(
@@ -206,11 +210,7 @@ def small_starter_branches(
         
     return small_soma_neighbors
 
-import neuron_nx_utils as nxu
-import copy
 
-import copy
-from python_tools import networkx_utils as xu
 
 def remove_node(
     G,
@@ -384,7 +384,6 @@ def remove_small_starter_branches(
 
 filter_small_starter_branches = remove_small_starter_branches 
 
-import numpy as np
 def soma_radius(
     G,
     stat = "mean",
@@ -405,7 +404,6 @@ def soma_radius(
     
     
 # --------------- For exporting graph as differnt file types -------------
-import networkx as nx
 
 compartment_index_swc_map = dict(
         dendrite = 0,
@@ -534,7 +532,6 @@ def export_swc_df(G,**kwargs):
     return pd.DataFrame.from_records(export_swc_dicts(G,return_df=True,**kwargs))
 
 
-from python_tools import file_utils as fileu
 def export_swc_file(
     G,
     filename=None,
@@ -568,7 +565,6 @@ def export_swc_file(
     )
 
 # -------------- computing morphology metrics using morphopy -----
-import morphopy_utils as mpu
 
 def swc_df(G,flip_z = True,**kwargs):
     swc = nxu.export_swc_df(G)
@@ -690,7 +686,6 @@ def dendrite_subgraph(
     verbose = verbose,
     )
 
-import time
 def plot(
     G,
     verbose = False,
@@ -939,7 +934,6 @@ def skeleton_from_node(
         np.arange(1,len(skeleton_points))]).T
     return skeleton_points[sk_idx]
     
-from python_tools import numpy_utils as nu
 def skeleton_coordinates_from_G(
     G,
     include_upstream_node = False,
@@ -990,8 +984,6 @@ def skeleton_coordinates_from_G(
         return total_skeleton_points
     
     
-from pykdtree.kdtree import KDTree
-import pandas as pd
 
 def split_location_node_map_df(
     G,
@@ -1211,7 +1203,6 @@ def soma_connected_nodes(
         return list(G[curr_node].keys())
 
 
-import numpy as np
 def most_upstream_nodes(
     G,
     nodes=None,
@@ -1420,7 +1411,6 @@ def distance_downstream_from_soma(
     **kwargs
     )
     
-import pandas as pd
 def distance_from_soma_df(
     G,
     nodes = None,
@@ -1603,7 +1593,6 @@ def nodes_within_distance_upstream_from_soma(
     )
 
 
-import numpy as np
 def soma_filter_by_complete_graph(
     G,
     inplace = False,
@@ -1732,7 +1721,6 @@ def filter_axon_on_dendrite_splits_to_most_upstream(
     return G
     
     
-import numpy as np
 def fix_flipped_skeletons(
     G,
     verbose = False,):
@@ -1807,7 +1795,7 @@ def width_from_node(
     Purpose: To get the width of a certain node
     
     Ex: 
-    import neuron_nx_utils as nxu
+    from neuron_morphology_tools import neuron_nx_utils as nxu
     nxu.width_from_node(
      G = G_obj,
      n = "L0_5",
@@ -1944,7 +1932,6 @@ def attribute_graph_from_graph_obj(
     return return_value
     
     
-import matplotlib.pyplot as plt
 def plot_inter_attribute_intervals(
     inter_attribute_info,
     title = None,
@@ -1980,9 +1967,6 @@ def plot_inter_attribute_intervals(
         
     return ax
 
-from python_tools import networkx_utils as xu
-import time
-from python_tools.tqdm_utils import tqdm
 def inter_attribute_intervals_from_G(
     G,
     attribute,
@@ -2112,9 +2096,6 @@ def n_data_attribues(G,attribute,n=None,exclude_presyn = True):
 
 
 
-from python_tools import networkx_utils as xu
-import networkx as nx
-from python_tools import numpy_utils as nu
 
 def inter_attribute_G_preprocessing(
     G,
@@ -2256,7 +2237,6 @@ def inter_attribute_intervals_dict_from_neuron_G(
 
 
 # =============== For the random shuffling (6320)==================
-from python_tools import numpy_utils as nu
 def shuffle_upstream_dist_on_data_attribute(
     G,
     attribute = None,
@@ -2273,7 +2253,7 @@ def shuffle_upstream_dist_on_data_attribute(
     in a neuron object (for null testing)
     
     Ex: 
-    import neuron_nx_utils as nxu
+    from neuron_morphology_tools import neuron_nx_utils as nxu
 
     segment_id = 864691134885060346
     split_index = 0
@@ -2423,7 +2403,6 @@ def plot_inter_attribute_intervals_from_dicts(
         ax.set_ylabel(f"Count")
         ax.legend()
         
-import neuron_nx_feature_processing as nxf  
 def filter_graph(
     G,
     remove_starter_branches = True,
@@ -2550,8 +2529,6 @@ def skeleton_soma_to_limb_start(G):
     return nodes,edges
 
     
-from python_tools import ipyvolume_utils as ipvu
-import numpy as np
 
 def skeleton(
     G,
@@ -2647,7 +2624,6 @@ def soma_center(G,use_most_upstream_as_backup = True):
             return None
         
         
-import neuron_nx_utils as nxu
 def starting_coordinates_all_limbs(
     G,
     verbose=False):
@@ -2698,8 +2674,6 @@ def skeleton_width_data_from_node(
     assert len(skeleton_points) == len(width_array)
     return skeleton_points,width_array
 
-from python_tools import mesh_utils as meshu
-from python_tools import numpy_utils as nu
 def skeleton_width_compartment_arrays_from_G(
     G,
     compartments = None,
@@ -3023,7 +2997,7 @@ def most_upstream_node_on_axon_limb(
 def skeleton_graph(
     G,
     graph_type="Graph"):
-    import skeleton_utils as sk
+    from meshAfterParty import skeleton_utils as sk
     verts,edges = nxu.skeleton(G)
     return sk.graph_from_non_unique_vertices_edges(verts,edges)
 
@@ -3080,7 +3054,6 @@ def fix_flipped_skeleton(
 
     return G
 
-from python_tools import networkx_utils as xu
 
 def upstream_limb_branch(G,n):
     up_node = xu.upstream_node(G,n)
@@ -3157,7 +3130,6 @@ def fix_width_inf_nan(
         print(f"nodes_fixed = {nodes_fixed}")
     return G  
 
-import numpy as np
 
 def soma_vector_from_node(
     G,
@@ -3529,7 +3501,6 @@ def vector_stats_from_G(
 
         
 
-import neuron_skeleton_utils as nsku
 def compartment_vector_width_stats_from_G(
     G,
     small_starter_branch_skeletal_length_min = 1000,
@@ -3797,12 +3768,6 @@ def plot_all_skeleton_compartments(G,mesh=None,**kwargs):
     nxu.all_compartment_skeletons(G,plot=True,mesh=mesh,**kwargs)
     
     
-import numpy as np
-from python_tools import ipyvolume_utils as ipvu
-from python_tools import networkx_utils as xu
-import numpy as np
-import pandas as pd
-from python_tools import numpy_utils as nu
 
 def skeleton_edge_df_with_edge_graph_with_compartments(
     G,
@@ -4308,7 +4273,6 @@ def n_scholl_dict_from_scholl_dict(
     
     return n_scholl_dict
 
-from python_tools import pandas_utils as pu
 def subgraph_df_and_endnodes_df(
     G,
     remove_small_endnodes = True,
@@ -4609,7 +4573,6 @@ def cluster_and_downstream_filter_coordinates_old(
     else:
         return nodes'''
     
-import neuron_nx_stats as nxst
 def cluster_and_downstream_filter_coordinates(
     G,
     coordinates,
@@ -4691,4 +4654,20 @@ def cluster_and_downstream_filter_coordinates(
 #     else:
 #         return nodes
 
-import neuron_nx_utils as nxu
+#--- from neuron_morphology_tools ---
+from . import morphopy_utils as mpu
+from . import neuron_nx_feature_processing as nxf  
+from . import neuron_nx_stats as nxst
+from . import neuron_skeleton_utils as nsku
+
+#--- from python_tools ---
+from python_tools import file_utils as fileu
+from python_tools import ipyvolume_utils as ipvu
+from python_tools import mesh_utils as meshu
+from python_tools import networkx_utils as xu
+from python_tools import numpy_utils as nu
+from python_tools import pandas_utils as pu
+from python_tools import system_utils as su
+from python_tools.tqdm_utils import tqdm
+
+from . import neuron_nx_utils as nxu
