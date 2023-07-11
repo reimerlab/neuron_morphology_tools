@@ -1018,7 +1018,7 @@ def aggregate_embedding_df_by_seg_split(
     """
     Purpose: Want a combined embedding from all the limbs
     """
-    from meshAfterParty from neurd import cell_type_utils as ctu
+    from neurd import cell_type_utils as ctu
     unique_seg_split = pu.filter_to_first_instance_of_unique_column(
         df[["segment_id","split_index"]],
         column_name=["segment_id","split_index"]

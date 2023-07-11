@@ -95,7 +95,7 @@ def cirle_intersections(
         print(f"Distances of scatters = {np.linalg.norm(scatters_axes - soma_center_axes,axis=1)}")
 
     if plot:
-        from meshAfterParty from neurd import neuron_visualizations as nviz
+        from neurd import neuron_visualizations as nviz
         print(f"Plotting the crossing edges (green) with intersections (red)")
         scatters = skeleton[cross_map].reshape(-1,orig_dim)
         nviz.plot_objects(
