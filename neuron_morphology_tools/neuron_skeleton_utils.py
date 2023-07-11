@@ -25,7 +25,7 @@ def cirle_intersections(
     
     Ex:
     import ipyvolume as ipv
-    from neuron_morphology_tools import neuron_skeleton_utils as nsku
+    from neuron_morphology_tools from neurd import neuron_skeleton_utils as nsku
 
     segment_id = 864691134884743930
     split_index = 0
@@ -95,7 +95,7 @@ def cirle_intersections(
         print(f"Distances of scatters = {np.linalg.norm(scatters_axes - soma_center_axes,axis=1)}")
 
     if plot:
-        from meshAfterParty import neuron_visualizations as nviz
+        from meshAfterParty from neurd import neuron_visualizations as nviz
         print(f"Plotting the crossing edges (green) with intersections (red)")
         scatters = skeleton[cross_map].reshape(-1,orig_dim)
         nviz.plot_objects(

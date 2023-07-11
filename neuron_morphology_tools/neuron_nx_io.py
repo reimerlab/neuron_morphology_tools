@@ -268,7 +268,7 @@ def G_from_adj_feature_dict(
     stored in the adjacency dict information
     
     Ex: 
-    from neuron_morphology_tools import neuron_nx_io as nxio
+    from neuron_morphology_tools from neurd import neuron_nx_io as nxio
     G_rec = nxio.G_from_adj_feature_dict(
         filepath = filepaths[1],
         plot = True,
@@ -1018,7 +1018,7 @@ def aggregate_embedding_df_by_seg_split(
     """
     Purpose: Want a combined embedding from all the limbs
     """
-    from meshAfterParty import cell_type_utils as ctu
+    from meshAfterParty from neurd import cell_type_utils as ctu
     unique_seg_split = pu.filter_to_first_instance_of_unique_column(
         df[["segment_id","split_index"]],
         column_name=["segment_id","split_index"]

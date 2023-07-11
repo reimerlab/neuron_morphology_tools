@@ -1795,7 +1795,7 @@ def width_from_node(
     Purpose: To get the width of a certain node
     
     Ex: 
-    from neuron_morphology_tools import neuron_nx_utils as nxu
+    from neuron_morphology_tools from neurd import neuron_nx_utils as nxu
     nxu.width_from_node(
      G = G_obj,
      n = "L0_5",
@@ -2253,7 +2253,7 @@ def shuffle_upstream_dist_on_data_attribute(
     in a neuron object (for null testing)
     
     Ex: 
-    from neuron_morphology_tools import neuron_nx_utils as nxu
+    from neuron_morphology_tools from neurd import neuron_nx_utils as nxu
 
     segment_id = 864691134885060346
     split_index = 0

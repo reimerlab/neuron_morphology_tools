@@ -13,7 +13,7 @@ def features_list(
     Purpose: Find all of the current features
     
     Ex: 
-    from neuron_morphology_tools import neuron_nx_feature_processing as nxf
+    from neuron_morphology_tools from neurd import neuron_nx_feature_processing as nxf
     nxf.features_list(G)
     """
     if limb_branch_features:
