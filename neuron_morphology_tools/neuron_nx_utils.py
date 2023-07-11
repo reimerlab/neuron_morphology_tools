@@ -9,7 +9,7 @@ from pykdtree.kdtree import KDTree
 import copy
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
+from python_tools import numpy_dep as np
 import pandas as pd
 import time
 
@@ -2997,7 +2997,7 @@ def most_upstream_node_on_axon_limb(
 def skeleton_graph(
     G,
     graph_type="Graph"):
-    from meshAfterParty import skeleton_utils as sk
+    from meshAfterParty from mesh_tools import skeleton_utils as sk
     verts,edges = nxu.skeleton(G)
     return sk.graph_from_non_unique_vertices_edges(verts,edges)
 

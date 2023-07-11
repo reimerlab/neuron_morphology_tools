@@ -16,7 +16,7 @@ from scipy.stats import wasserstein_distance
 import copy
 import matplotlib.pyplot as plt
 import networkx as nx
-import numpy as np
+from python_tools import numpy_dep as np
 import pandas as pd
 import seaborn as sns
 

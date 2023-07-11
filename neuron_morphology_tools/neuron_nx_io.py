@@ -2,7 +2,7 @@
 from pathlib import Path
 import copy
 import networkx as nx
-import numpy as np
+from python_tools import numpy_dep as np
 import pandas as pd
 import time# ----------- For outputing for use in GNN
 def export_GNN_info_dict(
