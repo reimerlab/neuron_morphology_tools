@@ -2997,7 +2997,7 @@ def most_upstream_node_on_axon_limb(
 def skeleton_graph(
     G,
     graph_type="Graph"):
-    from meshAfterParty from mesh_tools import skeleton_utils as sk
+    from mesh_tools import skeleton_utils as sk
     verts,edges = nxu.skeleton(G)
     return sk.graph_from_non_unique_vertices_edges(verts,edges)
 
