@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>neuron_morphology_tools.neuron_nx_feature_processing &mdash; neuron_morphology_tools  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            neuron_morphology_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">neuron_morphology_tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">neuron_morphology_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">neuron_morphology_tools.neuron_nx_feature_processing</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for neuron_morphology_tools.neuron_nx_feature_processing</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">from</span> <span class="nn">python_tools</span> <span class="kn">import</span> <span class="n">numpy_dep</span> <span class="k">as</span> <span class="n">np</span>
+
+
+<div class="viewcode-block" id="features_list"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.features_list">[docs]</a><span class="k">def</span> <span class="nf">features_list</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">limb_branch_features</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">features_to_ignore</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;u&quot;</span><span class="p">,),</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: Find all of the current features</span>
+<span class="sd">    </span>
+<span class="sd">    Ex: </span>
+<span class="sd">    from neuron_morphology_tools from neurd import neuron_nx_feature_processing as nxf</span>
+<span class="sd">    nxf.features_list(G)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">limb_branch_features</span><span class="p">:</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">limb_branch_subgraph</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">node_df</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">node_df</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">current_features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">node_df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">features_to_ignore</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">current_features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">current_features</span><span class="p">,</span><span class="n">features_to_ignore</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;current_features = </span><span class="si">{</span><span class="n">current_features</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+    <span class="k">return</span> <span class="n">current_features</span></div>
+
+<div class="viewcode-block" id="add_node_feature"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.add_node_feature">[docs]</a><span class="k">def</span> <span class="nf">add_node_feature</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">feature_func</span><span class="p">,</span>
+    <span class="n">feature_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">nodes</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">inplace</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">default_value</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">feature_value_dict</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose_loop</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="c1">#skip_if_exists = True,</span>
+    <span class="p">):</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Puprose: Will apply an feature_func</span>
+<span class="sd">    to a node based on the current node values</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">nodes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">nodes</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">limb_branch_nodes</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inplace</span><span class="p">:</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    
+    <span class="n">feature_func</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">convert_to_array_like</span><span class="p">(</span><span class="n">feature_func</span><span class="p">)</span>
+    
+<span class="c1">#     if verbose:</span>
+<span class="c1">#         print(f&quot;feature functions&quot;)</span>
+<span class="c1">#         print(f&quot;{[k.__name__ for k in feature_func]}&quot;)</span>
+        
+    <span class="k">def</span> <span class="nf">default_func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span><span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">default_value</span>
+    
+    <span class="k">for</span> <span class="n">att_func</span> <span class="ow">in</span> <span class="n">feature_func</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;str&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">att_func</span><span class="p">)):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">att_func</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">nxf</span><span class="p">,</span><span class="n">att_func</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>
+<span class="c1">#                 feature_name = att_func</span>
+<span class="c1">#                 att_func = default_func</span>
+                <span class="k">continue</span>
+            
+        <span class="k">if</span> <span class="n">feature_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">curr_name</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">att_func</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">curr_name</span> <span class="o">=</span> <span class="n">feature_name</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">---Setting </span><span class="si">{</span><span class="n">curr_name</span><span class="si">}</span><span class="s2">, att_func =</span><span class="si">{</span><span class="n">att_func</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">nodes</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">feature_value_dict</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">attr_value</span> <span class="o">=</span> <span class="n">feature_value_dict</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">n</span><span class="p">,</span><span class="n">curr_name</span><span class="p">,</span><span class="n">default_value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">attr_value</span> <span class="o">=</span> <span class="n">att_func</span><span class="p">(</span><span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">])</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">default_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">attr_value</span> <span class="o">=</span> <span class="n">default_value</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose_loop</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;For node </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">curr_name</span><span class="si">}</span><span class="s2"> = </span><span class="si">{</span><span class="n">attr_value</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">G</span><span class="o">.</span><span class="n">nodes</span><span class="p">[</span><span class="n">n</span><span class="p">][</span><span class="n">curr_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">attr_value</span>
+        
+    <span class="k">return</span> <span class="n">G</span></div>
+
+
+<div class="viewcode-block" id="skeleton_vector_upstream_x"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_upstream_x">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_upstream_x</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_upstream&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_upstream_y"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_upstream_y">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_upstream_y</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_upstream&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_upstream_z"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_upstream_z">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_upstream_z</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_upstream&quot;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_downstream_x"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_downstream_x">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_downstream_x</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_downstream&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_downstream_y"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_downstream_y">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_downstream_y</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_downstream&quot;</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_downstream_z"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_downstream_z">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_downstream_z</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_downstream&quot;</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="skeleton_vector_downstream_theta"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_downstream_theta">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_downstream_theta</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nu</span><span class="o">.</span><span class="n">polar_3D_from_cartesian</span><span class="p">(</span><span class="o">*</span><span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_downstream&quot;</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_downstream_phi"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_downstream_phi">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_downstream_phi</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nu</span><span class="o">.</span><span class="n">polar_3D_from_cartesian</span><span class="p">(</span><span class="o">*</span><span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_downstream&quot;</span><span class="p">])[</span><span class="mi">2</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="skeleton_vector_upstream_theta"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_upstream_theta">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_upstream_theta</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nu</span><span class="o">.</span><span class="n">polar_3D_from_cartesian</span><span class="p">(</span><span class="o">*</span><span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_upstream&quot;</span><span class="p">])[</span><span class="mi">1</span><span class="p">]</span></div>
+<div class="viewcode-block" id="skeleton_vector_upstream_phi"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.skeleton_vector_upstream_phi">[docs]</a><span class="k">def</span> <span class="nf">skeleton_vector_upstream_phi</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">nu</span><span class="o">.</span><span class="n">polar_3D_from_cartesian</span><span class="p">(</span><span class="o">*</span><span class="n">node_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;skeleton_vector_upstream&quot;</span><span class="p">])[</span><span class="mi">2</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="width_no_spine"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.width_no_spine">[docs]</a><span class="k">def</span> <span class="nf">width_no_spine</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">node_dict</span><span class="p">[</span><span class="s2">&quot;width_new&quot;</span><span class="p">][</span><span class="s2">&quot;no_spine_median_mesh_center&quot;</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="axon_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.axon_label">[docs]</a><span class="k">def</span> <span class="nf">axon_label</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">node_dict</span><span class="p">[</span><span class="s2">&quot;axon_compartment&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;axon&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="dendrite_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.dendrite_label">[docs]</a><span class="k">def</span> <span class="nf">dendrite_label</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">node_dict</span><span class="p">[</span><span class="s2">&quot;axon_compartment&quot;</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;dendrite&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="compartment_proof"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.compartment_proof">[docs]</a><span class="k">def</span> <span class="nf">compartment_proof</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">nxu</span><span class="o">.</span><span class="n">compartment_index_swc_map</span><span class="p">[</span><span class="n">node_dict</span><span class="p">[</span><span class="s2">&quot;compartment&quot;</span><span class="p">]])</span></div>
+
+<div class="viewcode-block" id="compartment_one_hot"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.compartment_one_hot">[docs]</a><span class="k">def</span> <span class="nf">compartment_one_hot</span><span class="p">(</span><span class="n">node_dict</span><span class="p">,</span><span class="n">compartment</span><span class="p">):</span>
+    <span class="n">compartment</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">convert_to_array_like</span><span class="p">(</span><span class="n">compartment</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">node_dict</span><span class="p">[</span><span class="s2">&quot;compartment&quot;</span><span class="p">]</span> <span class="ow">in</span> <span class="n">compartment</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="apical_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.apical_label">[docs]</a><span class="k">def</span> <span class="nf">apical_label</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">compartment_one_hot</span><span class="p">(</span>
+        <span class="n">node_dict</span><span class="p">,</span>
+        <span class="p">[</span><span class="s2">&quot;apical_tuft&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;oblique&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;apical_shaft&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;apical&quot;</span><span class="p">])</span></div>
+<div class="viewcode-block" id="basal_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.basal_label">[docs]</a><span class="k">def</span> <span class="nf">basal_label</span><span class="p">(</span><span class="n">node_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">compartment_one_hot</span><span class="p">(</span>
+        <span class="n">node_dict</span><span class="p">,</span>
+        <span class="p">[</span><span class="s2">&quot;basal&quot;</span><span class="p">])</span></div>
+
+
+
+<div class="viewcode-block" id="feature_clip"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.feature_clip">[docs]</a><span class="k">def</span> <span class="nf">feature_clip</span><span class="p">(</span>
+    <span class="n">row_dict</span><span class="p">,</span>
+    <span class="n">feature_name</span><span class="p">,</span>
+    <span class="n">a_min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">a_max</span><span class="o">=</span><span class="mi">100000</span><span class="p">,</span>
+    <span class="p">):</span>
+    <span class="n">feature</span> <span class="o">=</span> <span class="n">row_dict</span><span class="p">[</span><span class="n">feature_name</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">feature</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">a_max</span>
+    
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="n">feature</span><span class="p">,</span><span class="n">a_min</span> <span class="o">=</span> <span class="n">a_min</span><span class="p">,</span><span class="n">a_max</span><span class="o">=</span><span class="n">a_max</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="min_dist_synapses_pre_downstream_clip"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.min_dist_synapses_pre_downstream_clip">[docs]</a><span class="k">def</span> <span class="nf">min_dist_synapses_pre_downstream_clip</span><span class="p">(</span>
+    <span class="n">row_dict</span><span class="p">):</span>
+    
+    <span class="k">return</span> <span class="n">feature_clip</span><span class="p">(</span>
+    <span class="n">row_dict</span><span class="p">,</span>
+    <span class="n">feature_name</span><span class="o">=</span><span class="s2">&quot;min_dist_synapses_pre_downstream&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+<div class="viewcode-block" id="min_dist_synapses_pre_upstream_clip"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.min_dist_synapses_pre_upstream_clip">[docs]</a><span class="k">def</span> <span class="nf">min_dist_synapses_pre_upstream_clip</span><span class="p">(</span>
+    <span class="n">row_dict</span><span class="p">):</span>
+    
+    <span class="k">return</span> <span class="n">feature_clip</span><span class="p">(</span>
+    <span class="n">row_dict</span><span class="p">,</span>
+    <span class="n">feature_name</span><span class="o">=</span><span class="s2">&quot;min_dist_synapses_pre_downstream&quot;</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+<span class="n">auto_proof_filter_label_map</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;valid&quot;</span><span class="p">:</span><span class="mi">0</span><span class="p">,</span>
+    <span class="s2">&quot;high_degree_branching_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">1</span><span class="p">,</span>
+    <span class="s2">&quot;low_degree_branching_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">2</span><span class="p">,</span>
+    <span class="s2">&quot;width_jump_up_axon_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">3</span><span class="p">,</span>
+    <span class="s2">&quot;axon_on_dendrite_merges_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">4</span><span class="p">,</span>
+    <span class="s2">&quot;high_degree_branching_dendrite_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">5</span><span class="p">,</span>
+    <span class="s2">&quot;width_jump_up_dendrite_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">6</span><span class="p">,</span>
+    <span class="s2">&quot;double_back_dendrite_split_locations_before_filter&quot;</span><span class="p">:</span><span class="mi">7</span><span class="p">,</span>
+<span class="p">}</span>
+
+<div class="viewcode-block" id="auto_proof_filter_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.auto_proof_filter_label">[docs]</a><span class="k">def</span> <span class="nf">auto_proof_filter_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="n">curr_filt</span> <span class="o">=</span> <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;auto_proof_filter&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">curr_filt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">curr_filt</span> <span class="o">=</span> <span class="s2">&quot;valid&quot;</span>
+    <span class="k">return</span> <span class="n">auto_proof_filter_label_map</span><span class="p">[</span><span class="n">curr_filt</span><span class="p">]</span></div>
+
+<div class="viewcode-block" id="merge_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_label">[docs]</a><span class="k">def</span> <span class="nf">merge_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">,</span><span class="n">merge_name</span><span class="p">):</span>
+    <span class="n">curr_filt</span> <span class="o">=</span> <span class="n">row_dict</span><span class="p">[</span><span class="s2">&quot;auto_proof_filter&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">curr_filt</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">curr_filt</span> <span class="o">=</span> <span class="s2">&quot;clean&quot;</span> 
+    <span class="k">return</span> <span class="n">merge_name</span> <span class="ow">in</span> <span class="n">curr_filt</span></div>
+    <span class="c1">#return auto_proof_filter_label_map[curr_filt]</span>
+
+<div class="viewcode-block" id="merge_clean"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_clean">[docs]</a><span class="k">def</span> <span class="nf">merge_clean</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;clean&quot;</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="merge_high_degree_branching_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_high_degree_branching_label">[docs]</a><span class="k">def</span> <span class="nf">merge_high_degree_branching_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;high_degree_branching_split&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_low_degree_branching_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_low_degree_branching_label">[docs]</a><span class="k">def</span> <span class="nf">merge_low_degree_branching_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;low_degree_branching_split&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_width_jump_up_axon_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_width_jump_up_axon_label">[docs]</a><span class="k">def</span> <span class="nf">merge_width_jump_up_axon_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;width_jump_up_axon&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_axon_on_dendrite_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_axon_on_dendrite_label">[docs]</a><span class="k">def</span> <span class="nf">merge_axon_on_dendrite_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;axon_on_dendrite&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="merge_high_degree_branching_dendrite_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_high_degree_branching_dendrite_label">[docs]</a><span class="k">def</span> <span class="nf">merge_high_degree_branching_dendrite_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;high_degree_branching_dendrite&quot;</span><span class="p">)</span></div>
+
+<span class="k">def</span> <span class="nf">merge_width_jump_up_dendrite_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;width_jump_up_dendrite&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="merge_double_back_dendrite_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_double_back_dendrite_label">[docs]</a><span class="k">def</span> <span class="nf">merge_double_back_dendrite_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;double_back_dendrite&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="merge_width_jump_up_dendrite_label"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.merge_width_jump_up_dendrite_label">[docs]</a><span class="k">def</span> <span class="nf">merge_width_jump_up_dendrite_label</span><span class="p">(</span><span class="n">row_dict</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">merge_label</span><span class="p">(</span>
+        <span class="n">row_dict</span><span class="p">,</span>
+        <span class="n">merge_name</span><span class="o">=</span><span class="s2">&quot;width_jump_up_dendrite&quot;</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="add_skeleton_vector_features"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.add_skeleton_vector_features">[docs]</a><span class="k">def</span> <span class="nf">add_skeleton_vector_features</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">use_polar_coords</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    
+    
+
+        
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">use_polar_coords</span><span class="p">:</span>
+        <span class="n">attr_funcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">skeleton_vector_upstream_x</span><span class="p">,</span>
+        <span class="n">skeleton_vector_upstream_y</span><span class="p">,</span>
+        <span class="n">skeleton_vector_upstream_z</span><span class="p">,</span>
+        <span class="n">skeleton_vector_downstream_x</span><span class="p">,</span>
+        <span class="n">skeleton_vector_downstream_y</span><span class="p">,</span>
+        <span class="n">skeleton_vector_downstream_z</span><span class="p">,]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Using polar coordinates&quot;</span><span class="p">)</span>
+        <span class="n">attr_funcs</span> <span class="o">=</span> <span class="p">[</span><span class="n">skeleton_vector_downstream_theta</span><span class="p">,</span>
+        <span class="n">skeleton_vector_downstream_phi</span><span class="p">,</span>
+        <span class="n">skeleton_vector_upstream_theta</span><span class="p">,</span>
+        <span class="n">skeleton_vector_upstream_phi</span><span class="p">,]</span>
+    <span class="n">G_new_feats</span> <span class="o">=</span> <span class="n">nxf</span><span class="o">.</span><span class="n">add_node_feature</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">feature_func</span><span class="o">=</span><span class="n">attr_funcs</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">G_new_feats</span></div>
+
+<div class="viewcode-block" id="add_any_missing_node_features"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.add_any_missing_node_features">[docs]</a><span class="k">def</span> <span class="nf">add_any_missing_node_features</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">inplace</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="c1">#default_value = 0,</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose:</span>
+<span class="sd">    1) Check that all the features are requested</span>
+<span class="sd">    2) Generate the features that are not</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">features</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">features_to_output_for_gnn</span>
+    
+    <span class="n">curr_features</span> <span class="o">=</span> <span class="n">nxf</span><span class="o">.</span><span class="n">features_list</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">features_not_computed</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span><span class="n">features</span><span class="p">,</span><span class="n">curr_features</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;features_not_computed = </span><span class="si">{</span><span class="n">features_not_computed</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">G_new</span> <span class="o">=</span> <span class="n">nxf</span><span class="o">.</span><span class="n">add_node_feature</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">feature_func</span><span class="o">=</span><span class="n">features_not_computed</span><span class="p">,</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+        <span class="n">inplace</span> <span class="o">=</span> <span class="n">inplace</span><span class="p">,</span>
+        <span class="c1">#default_value=default_value</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">G_new</span></div>
+
+
+<span class="n">features_to_output_for_gnn_old</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;n_spines&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;total_spine_volume&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_synapses_post&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_synapses_pre&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_synapses_head&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_synapses_neck&quot;</span><span class="p">,</span>
+    <span class="c1">#&quot;parent_skeletal_angle&quot;,</span>
+    <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;skeleton_vector_upstream_theta&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;skeleton_vector_upstream_phi&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;skeleton_vector_downstream_theta&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;skeleton_vector_downstream_phi&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;width_upstream&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;width_no_spine&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;width_downstream&quot;</span><span class="p">,</span>
+    <span class="p">]</span>
+
+<span class="n">features_to_output_for_gnn</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="c1"># skeletal features</span>
+     <span class="s1">&#39;skeletal_length&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;skeleton_vector_upstream_theta&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;skeleton_vector_upstream_phi&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;skeleton_vector_downstream_theta&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;skeleton_vector_downstream_phi&#39;</span><span class="p">,</span>
+    
+    <span class="c1">#width features</span>
+     <span class="s1">&#39;width_upstream&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;width_no_spine&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;width_downstream&#39;</span><span class="p">,</span>
+    
+    <span class="c1"># synapse features</span>
+    <span class="s1">&#39;n_synapses_post&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;n_synapses_pre&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;n_synapses_head_postsyn&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;n_synapses_neck_postsyn&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;n_synapses_shaft_postsyn&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;n_synapses_no_head_postsyn&#39;</span><span class="p">,</span>
+    
+    <span class="c1"># the volumes  of each</span>
+    <span class="s1">&#39;synapse_volume_shaft_postsyn_sum&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;synapse_volume_head_postsyn_sum&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;synapse_volume_no_head_postsyn_sum&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;synapse_volume_neck_postsyn_sum&#39;</span><span class="p">,</span>
+     <span class="s1">&#39;synapse_volume_postsyn_sum&#39;</span><span class="p">,</span>
+    
+    <span class="c1">#spine features</span>
+    <span class="s1">&#39;n_spines&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;spine_volume_sum&#39;</span><span class="p">,</span>
+    
+<span class="p">]</span>
+
+<span class="n">features_hierarchical</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;soma_start_angle_max&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;max_soma_volume&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;n_syn_soma&quot;</span><span class="p">]</span>
+
+<span class="n">features_to_output_for_gnn_hierarchical</span> <span class="o">=</span> <span class="n">features_to_output_for_gnn</span> <span class="o">+</span> <span class="n">features_hierarchical</span>
+    
+
+<div class="viewcode-block" id="filter_G_features"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_feature_processing.filter_G_features">[docs]</a><span class="k">def</span> <span class="nf">filter_G_features</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">features</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">inplace</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: To reduce a networkx graph to a </span>
+<span class="sd">    certain number of features (and all other superflous features are deleted)</span>
+<span class="sd">    </span>
+<span class="sd">    Ex: </span>
+<span class="sd">    axon_vs_dendrite_features = [</span>
+<span class="sd">    &quot;mesh_volume&quot;,</span>
+<span class="sd">    &quot;n_spines&quot;,</span>
+<span class="sd">    &quot;total_spine_volume&quot;,</span>
+<span class="sd">    &quot;n_synapses_post&quot;,</span>
+<span class="sd">    &quot;n_synapses_pre&quot;,</span>
+<span class="sd">    #&quot;n_synapse_head&quot;,</span>
+<span class="sd">    #&quot;parent_skeletal_angle&quot;,</span>
+<span class="sd">    &quot;skeletal_length&quot;,</span>
+<span class="sd">    &quot;skeleton_vector_upstream_theta&quot;,</span>
+<span class="sd">    &quot;skeleton_vector_upstream_phi&quot;,</span>
+<span class="sd">    &quot;skeleton_vector_downstream_theta&quot;,</span>
+<span class="sd">    &quot;skeleton_vector_downstream_phi&quot;,</span>
+<span class="sd">    &quot;width_upstream&quot;,</span>
+<span class="sd">    &quot;width_no_spine&quot;,</span>
+<span class="sd">    &quot;width_downstream&quot;,</span>
+<span class="sd">    ]</span>
+<span class="sd">    </span>
+<span class="sd">    G_feat_filt = nxf.filter_G_features(</span>
+<span class="sd">        G,</span>
+<span class="sd">        features=axon_vs_dendrite_features,</span>
+<span class="sd">        inplace = False,</span>
+<span class="sd">        verbose = True,</span>
+<span class="sd">    )</span>
+
+<span class="sd">    xu.node_df(G_feat_filt)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">inplace</span><span class="p">:</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+
+
+    <span class="n">G_ret</span> <span class="o">=</span> <span class="n">nxf</span><span class="o">.</span><span class="n">add_any_missing_node_features</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="n">features</span><span class="p">,</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of features after adding missing ones = </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">xu</span><span class="o">.</span><span class="n">node_df</span><span class="p">(</span><span class="n">G_ret</span><span class="p">)</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">G_ret</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">delete_node_attributes</span><span class="p">(</span><span class="n">G_ret</span><span class="p">,</span><span class="n">attributes_not_to_delete</span><span class="o">=</span><span class="n">features</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Number of features after adding missing ones = </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">xu</span><span class="o">.</span><span class="n">node_df</span><span class="p">(</span><span class="n">G_ret</span><span class="p">)</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">G_ret</span></div>
+
+
+
+
+
+<span class="c1">#--- from neuron_morphology_tools ---</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">neuron_nx_utils</span> <span class="k">as</span> <span class="n">nxu</span>
+
+<span class="c1">#--- from python_tools ---</span>
+<span class="kn">from</span> <span class="nn">python_tools</span> <span class="kn">import</span> <span class="n">networkx_utils</span> <span class="k">as</span> <span class="n">xu</span>
+<span class="kn">from</span> <span class="nn">python_tools</span> <span class="kn">import</span> <span class="n">numpy_utils</span> <span class="k">as</span> <span class="n">nu</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">neuron_nx_feature_processing</span> <span class="k">as</span> <span class="n">nxf</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Brendan Celii.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
