@@ -10,11 +10,11 @@
     <script src="../../_static/js/html5shiv.min.js"></script>
   <![endif]-->
   
-        <script src="../../_static/jquery.js"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
-        <script src="../../_static/doctools.js"></script>
-        <script src="../../_static/sphinx_highlight.js"></script>
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -4718,6 +4718,36 @@
         <span class="k">return</span> <span class="n">mean_coordinates</span><span class="p">,</span><span class="n">downstream_skeletal_lengths</span>
     <span class="k">else</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">mean_coordinates</span></div>
+    
+<div class="viewcode-block" id="clean_G"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_utils.clean_G">[docs]</a><span class="k">def</span> <span class="nf">clean_G</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">debug_time</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">debug_time</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total time for pulling down neuron graph obj: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">return_G</span> <span class="o">=</span>  <span class="n">nxu</span><span class="o">.</span><span class="n">fix_flipped_skeleton</span><span class="p">(</span><span class="n">G</span><span class="p">,</span><span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">debug_time</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total time for flipping sk: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">return_G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">fix_attribute</span><span class="p">(</span><span class="n">return_G</span><span class="p">,</span><span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">debug_time</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total time for fixing attr: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="n">return_G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">fix_width_inf_nan</span><span class="p">(</span><span class="n">return_G</span><span class="p">,</span> <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">debug_time</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Total time for fixing width inf: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">remove_small_starter_branches</span><span class="p">:</span>
+        <span class="n">return_G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">remove_small_starter_branches</span><span class="p">(</span><span class="n">return_G</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">remove_small_endnode_branches</span><span class="p">:</span>
+        <span class="n">return_G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">remove_small_endnode_branches</span><span class="p">(</span><span class="n">return_G</span><span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">return_G</span></div>
 
 <span class="c1">#     #4) Return the branches are convert them to coordinates</span>
 <span class="c1">#     if return_coordinates:</span>
