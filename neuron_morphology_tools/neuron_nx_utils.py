@@ -4647,6 +4647,36 @@ def cluster_and_downstream_filter_coordinates(
         return mean_coordinates,downstream_skeletal_lengths
     else:
         return mean_coordinates
+    
+def clean_G(
+    G,
+    verbose =False,
+    debug_time = False,
+    **kwargs):
+    
+    if debug_time:
+        print(f"Total time for pulling down neuron graph obj: {time.time() - st}")
+        st = time.time()
+    return_G =  nxu.fix_flipped_skeleton(G,verbose=verbose)
+    if debug_time:
+        print(f"Total time for flipping sk: {time.time() - st}")
+        st = time.time()
+    return_G = nxu.fix_attribute(return_G,verbose = verbose)
+    if debug_time:
+        print(f"Total time for fixing attr: {time.time() - st}")
+        st = time.time()
+    return_G = nxu.fix_width_inf_nan(return_G, verbose = verbose)
+    if debug_time:
+        print(f"Total time for fixing width inf: {time.time() - st}")
+        st = time.time()
+
+    if remove_small_starter_branches:
+        return_G = nxu.remove_small_starter_branches(return_G)
+
+    if remove_small_endnode_branches:
+        return_G = nxu.remove_small_endnode_branches(return_G)
+    
+    return return_G
 
 #     #4) Return the branches are convert them to coordinates
 #     if return_coordinates:
