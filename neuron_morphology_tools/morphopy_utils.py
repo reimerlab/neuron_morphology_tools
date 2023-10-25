@@ -16,7 +16,7 @@ from scipy.stats import wasserstein_distance
 import copy
 import matplotlib.pyplot as plt
 import networkx as nx
-from python_tools import numpy_dep as np
+from datasci_tools import numpy_dep as np
 import pandas as pd
 import seaborn as sns
 
@@ -450,7 +450,7 @@ def morphometrics(
     return morphometry_data
 
 
-#--- from python_tools ---
-from python_tools import pandas_utils as pu
+#--- from datasci_tools ---
+from datasci_tools import pandas_utils as pu
 
 from . import morphopy_utils as mpu

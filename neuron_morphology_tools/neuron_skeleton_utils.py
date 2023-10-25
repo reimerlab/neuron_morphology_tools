@@ -1,5 +1,5 @@
 
-from python_tools import numpy_dep as np
+from datasci_tools import numpy_dep as np
 
 def skeletal_length(skeleton):
     if len(skeleton) == 0:
@@ -113,8 +113,8 @@ def cirle_intersections(
 #--- from neuron_morphology_tools ---
 from . import neuron_nx_utils as nxu
 
-#--- from python_tools ---
-from python_tools import ipyvolume_utils as ipvu
-from python_tools import numpy_utils as nu
+#--- from datasci_tools ---
+from datasci_tools import ipyvolume_utils as ipvu
+from datasci_tools import numpy_utils as nu
 
 from . import neuron_skeleton_utils as nsku

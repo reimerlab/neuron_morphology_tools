@@ -9,7 +9,7 @@ from pykdtree.kdtree import KDTree
 import copy
 import matplotlib.pyplot as plt
 import networkx as nx
-from python_tools import numpy_dep as np
+from datasci_tools import numpy_dep as np
 import pandas as pd
 import time
 
@@ -583,7 +583,7 @@ def morphometrics(
         
     if apply_basal_dendrite_swap:
         # --- fixed so dendrite compartment will be changed to basal and recognized as dendrite ---
-        from python_tools import pandas_utils as pu
+        from datasci_tools import pandas_utils as pu
         def basal_rename(row):
             if row["type"] == compartment_index_swc_map["dendrite"]:
                 return compartment_index_swc_map["basal"]
@@ -4690,14 +4690,14 @@ from . import neuron_nx_feature_processing as nxf
 from . import neuron_nx_stats as nxst
 from . import neuron_skeleton_utils as nsku
 
-#--- from python_tools ---
-from python_tools import file_utils as fileu
-from python_tools import ipyvolume_utils as ipvu
-from python_tools import mesh_utils as meshu
-from python_tools import networkx_utils as xu
-from python_tools import numpy_utils as nu
-from python_tools import pandas_utils as pu
-from python_tools import system_utils as su
-from python_tools.tqdm_utils import tqdm
+#--- from datasci_tools ---
+from datasci_tools import file_utils as fileu
+from datasci_tools import ipyvolume_utils as ipvu
+from datasci_tools import mesh_utils as meshu
+from datasci_tools import networkx_utils as xu
+from datasci_tools import numpy_utils as nu
+from datasci_tools import pandas_utils as pu
+from datasci_tools import system_utils as su
+from datasci_tools.tqdm_utils import tqdm
 
 from . import neuron_nx_utils as nxu

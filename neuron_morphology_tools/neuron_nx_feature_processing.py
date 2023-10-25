@@ -1,7 +1,7 @@
 
 import copy
 import networkx as nx
-from python_tools import numpy_dep as np
+from datasci_tools import numpy_dep as np
 
 
 def features_list(
@@ -441,8 +441,8 @@ def filter_G_features(
 #--- from neuron_morphology_tools ---
 from . import neuron_nx_utils as nxu
 
-#--- from python_tools ---
-from python_tools import networkx_utils as xu
-from python_tools import numpy_utils as nu
+#--- from datasci_tools ---
+from datasci_tools import networkx_utils as xu
+from datasci_tools import numpy_utils as nu
 
 from . import neuron_nx_feature_processing as nxf

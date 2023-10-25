@@ -2,7 +2,7 @@
 from pathlib import Path
 import copy
 import networkx as nx
-from python_tools import numpy_dep as np
+from datasci_tools import numpy_dep as np
 import pandas as pd
 import time# ----------- For outputing for use in GNN
 def export_GNN_info_dict(
@@ -1218,12 +1218,12 @@ def add_skeletal_length_xyz_to_df_x_features_x_pool(
 from . import neuron_nx_feature_processing as nxf
 from . import neuron_nx_utils as nxu
 
-#--- from python_tools ---
-from python_tools import general_utils as gu
-from python_tools import networkx_utils as xu
-from python_tools import numpy_utils as nu
-from python_tools import pandas_utils as pu
-from python_tools import system_utils as su
-from python_tools.tqdm_utils import tqdm
+#--- from datasci_tools ---
+from datasci_tools import general_utils as gu
+from datasci_tools import networkx_utils as xu
+from datasci_tools import numpy_utils as nu
+from datasci_tools import pandas_utils as pu
+from datasci_tools import system_utils as su
+from datasci_tools.tqdm_utils import tqdm
 
 from . import neuron_nx_io as nxio

@@ -408,10 +408,10 @@ def skeletal_length_downstream(
 from . import neuron_nx_feature_processing as nxf
 from . import neuron_nx_utils as nxu
 
-#--- from python_tools ---
-from python_tools import general_utils as gu
-from python_tools import networkx_utils as xu
-from python_tools import numpy_utils as nu
-from python_tools import pandas_utils as pu
+#--- from datasci_tools ---
+from datasci_tools import general_utils as gu
+from datasci_tools import networkx_utils as xu
+from datasci_tools import numpy_utils as nu
+from datasci_tools import pandas_utils as pu
 
 from . import neuron_nx_stats as nxst
