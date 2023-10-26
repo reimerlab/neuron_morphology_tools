@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>neuron_morphology_tools.neuron_nx_io &mdash; neuron_morphology_tools  documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script src="../../_static/jquery.js?v=5d32c60e"></script>
+        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=b3ba4146"></script>
+        <script src="../../_static/doctools.js?v=888ff710"></script>
+        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            neuron_morphology_tools
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">neuron_morphology_tools</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">neuron_morphology_tools</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">neuron_morphology_tools.neuron_nx_io</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for neuron_morphology_tools.neuron_nx_io</h1><div class="highlight"><pre>
+<span></span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">copy</span>
+<span class="kn">import</span> <span class="nn">networkx</span> <span class="k">as</span> <span class="nn">nx</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">numpy_dep</span> <span class="k">as</span> <span class="n">np</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">time</span><span class="c1"># ----------- For outputing for use in GNN</span>
+<div class="viewcode-block" id="export_GNN_info_dict"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.export_GNN_info_dict">[docs]</a><span class="k">def</span> <span class="nf">export_GNN_info_dict</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">features_to_output</span><span class="p">,</span>
+    <span class="n">axon_dendrite</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    
+
+    <span class="n">label_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span><span class="c1">#&quot;axon_label&quot;,</span>
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+
+    <span class="n">feature_matrix_dtype</span> <span class="o">=</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span>
+    
+    <span class="c1">#output file features</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;./&quot;</span><span class="p">,</span>
+    <span class="n">filename</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">return_G_before_output</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    To process a neuron object before output</span>
+<span class="sd">    in dictionary format to be used by a GNN</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;return_filepaths =- </span><span class="si">{</span><span class="n">return_filepaths</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    
+    <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">label_name</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*** Warning label_name is None&quot;</span><span class="p">)</span>
+            
+    <span class="k">if</span> <span class="n">graph_label</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;*** Warning graph_label is None&quot;</span><span class="p">)</span>
+    
+    
+    <span class="n">G_dict</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">graph_attr_dict</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;G_dict = </span><span class="si">{</span><span class="n">G_dict</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    
+    <span class="n">filename</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">name_from_G</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">description</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">filename</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot;_</span><span class="si">{</span><span class="n">description</span><span class="si">}</span><span class="s2">&quot;</span>
+        
+        
+        
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="c1"># ----------- Does a lot of the preprocessing before outputting----------</span>
+    <span class="k">if</span> <span class="n">axon_dendrite</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Filtering for </span><span class="si">{</span><span class="n">axon_dendrite</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">axon_dendrite_subgraph</span><span class="p">(</span>
+            <span class="n">G</span><span class="p">,</span>
+            <span class="n">compartment</span><span class="o">=</span><span class="n">axon_dendrite</span><span class="p">,</span>
+            <span class="n">include_soma</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+            <span class="p">)</span>
+        
+        
+    <span class="k">if</span> <span class="n">remove_starter_branches</span><span class="p">:</span>
+        <span class="n">G_filt</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">remove_small_starter_branches</span><span class="p">(</span>
+            <span class="n">G</span><span class="p">,</span>
+            <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+            <span class="n">maintain_skeleton_connectivity</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">G_filt</span> <span class="o">=</span> <span class="n">G</span>
+        
+
+    <span class="k">if</span> <span class="n">distance_threshold</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">G_dist_filt</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">nodes_within_distance_upstream_from_soma</span><span class="p">(</span>
+            <span class="n">G_filt</span><span class="p">,</span>
+            <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+            <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="p">,</span>
+            <span class="n">return_subgraph</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">G_dist_filt</span> <span class="o">=</span> <span class="n">G_filt</span>
+        
+    <span class="k">if</span> <span class="n">distance_threshold_min</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">G_dist_filt</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">nodes_farther_than_distance_from_soma</span><span class="p">(</span>
+            <span class="n">G_dist_filt</span><span class="p">,</span>
+            <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+            <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold_min</span><span class="p">,</span>
+            <span class="n">return_subgraph</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">distance_type</span> <span class="o">=</span> <span class="s2">&quot;downstream&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nxu</span><span class="o">.</span><span class="n">limb_branch_subgraph</span><span class="p">(</span><span class="n">G_dist_filt</span><span class="p">)</span><span class="o">.</span><span class="n">nodes</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">G_with_feats</span> <span class="o">=</span> <span class="n">nxf</span><span class="o">.</span><span class="n">filter_G_features</span><span class="p">(</span>
+                    <span class="n">G_dist_filt</span><span class="p">,</span>
+                    <span class="n">features</span><span class="o">=</span><span class="n">features_to_output</span><span class="p">,</span>
+                    <span class="n">inplace</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+                <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">G_with_feats</span> <span class="o">=</span> <span class="n">G_dist_filt</span>
+    
+    <span class="k">if</span> <span class="n">return_G_before_output</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">divide_into_limbs</span><span class="p">:</span>
+            <span class="n">G_with_feats</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">limb_graphs_from_soma_connected_nodes</span><span class="p">(</span><span class="n">G_with_feats</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">G_with_feats</span>
+    <span class="c1"># ----------- Dividing up and outputting the files -----------</span>
+    <span class="k">if</span> <span class="n">divide_into_limbs</span><span class="p">:</span>
+<span class="c1">#         print(f&quot;G_with_feats.nodes() = {G_with_feats.nodes()}&quot;)</span>
+<span class="c1">#         import matplotlib.pyplot as plt</span>
+<span class="c1">#         import networkx as nx</span>
+<span class="c1">#         nx.draw(G_with_feats,with_labels = True)</span>
+<span class="c1">#         plt.show()</span>
+        <span class="n">limb_graphs_for_axon</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">limb_graphs_from_soma_connected_nodes</span><span class="p">(</span><span class="n">G_with_feats</span><span class="p">)</span>
+        <span class="c1">#print(f&quot;len(limb_graphs_for_axon) = {len(limb_graphs_for_axon)}&quot;)</span>
+        <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">G_limb</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">limb_graphs_for_axon</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Outputing limb </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">---&quot;</span><span class="p">)</span>
+
+
+            <span class="n">most_starting_branch</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">most_upstream_node</span><span class="p">(</span><span class="n">G_limb</span><span class="p">)</span>
+            <span class="c1">#converting to non-directional</span>
+            <span class="n">G_limb</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">(</span><span class="n">G_limb</span><span class="p">)</span>
+
+            <span class="n">G_limb</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">limb_branch_subgraph</span><span class="p">(</span><span class="n">G_limb</span><span class="p">)</span>
+            <span class="n">limb_info</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">adjacency_feature_info</span><span class="p">(</span>
+                <span class="n">G</span> <span class="o">=</span> <span class="n">G_limb</span><span class="p">,</span>
+                <span class="n">return_df_for_feature_matrix</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                <span class="n">feature_matrix_dtype</span> <span class="o">=</span> <span class="n">feature_matrix_dtype</span><span class="p">,</span>
+                <span class="n">dense_adjacency</span><span class="o">=</span><span class="kc">True</span>
+
+            <span class="p">)</span>
+
+            <span class="n">limb_info</span><span class="p">[</span><span class="s2">&quot;label_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">label_name</span>
+            <span class="n">limb_info</span><span class="p">[</span><span class="s2">&quot;graph_label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_label</span>
+
+            <span class="n">curr_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">_limb_</span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s2">_starting_branch_</span><span class="si">{</span><span class="n">most_starting_branch</span><span class="si">}</span><span class="s2">&quot;</span>
+
+            <span class="n">output_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">((</span><span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span><span class="o">/</span><span class="n">Path</span><span class="p">(</span><span class="n">curr_filename</span><span class="p">))</span><span class="o">.</span><span class="n">absolute</span><span class="p">())</span>
+
+            <span class="k">if</span> <span class="n">return_filepaths</span><span class="p">:</span>
+                <span class="n">ret_filepath</span> <span class="o">=</span> <span class="n">su</span><span class="o">.</span><span class="n">compressed_pickle</span><span class="p">(</span>
+                    <span class="n">limb_info</span><span class="p">,</span>
+                    <span class="n">output_path</span><span class="p">,</span>
+                    <span class="n">return_filepath</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                    <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ret_filepath</span> <span class="o">=</span> <span class="n">limb_info</span>
+
+            <span class="n">filepaths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret_filepath</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Pseudocode: </span>
+<span class="sd">        1) Remove the soma from the graph</span>
+<span class="sd">        2) Attach the label of the graph</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">()</span>
+
+        <span class="n">G_no_soma</span> <span class="o">=</span> <span class="n">nxu</span><span class="o">.</span><span class="n">soma_filter_by_complete_graph</span><span class="p">(</span><span class="n">G_with_feats</span><span class="p">,</span><span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="n">G_no_soma</span> <span class="o">=</span> <span class="n">nx</span><span class="o">.</span><span class="n">Graph</span><span class="p">(</span><span class="n">G_no_soma</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">G_no_soma</span><span class="o">.</span><span class="n">nodes</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">G_info</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">adjacency_feature_info</span><span class="p">(</span>
+                    <span class="n">G</span> <span class="o">=</span> <span class="n">G_no_soma</span><span class="p">,</span>
+                    <span class="n">return_df_for_feature_matrix</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+                    <span class="n">feature_matrix_dtype</span> <span class="o">=</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span>
+                    <span class="n">dense_adjacency</span><span class="o">=</span><span class="kc">True</span>
+
+                <span class="p">)</span>
+
+            <span class="n">G_info</span><span class="p">[</span><span class="s2">&quot;label_name&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">label_name</span>
+            <span class="n">G_info</span><span class="p">[</span><span class="s2">&quot;graph_label&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_label</span>
+
+            <span class="n">curr_filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">output_path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">((</span><span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">)</span><span class="o">/</span><span class="n">Path</span><span class="p">(</span><span class="n">curr_filename</span><span class="p">))</span><span class="o">.</span><span class="n">absolute</span><span class="p">())</span>
+
+            <span class="k">if</span> <span class="n">return_filepaths</span><span class="p">:</span>
+                <span class="n">ret_filepath</span> <span class="o">=</span> <span class="n">su</span><span class="o">.</span><span class="n">compressed_pickle</span><span class="p">(</span>
+                        <span class="n">G_info</span><span class="p">,</span>
+                        <span class="n">output_path</span><span class="p">,</span>
+                        <span class="n">return_filepath</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                        <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ret_filepath</span> <span class="o">=</span> <span class="n">G_info</span>
+
+            <span class="n">filepaths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ret_filepath</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="se">\n\n</span><span class="s2">---Total time = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        
+    <span class="k">return</span> <span class="n">filepaths</span></div>
+    
+    
+
+
+<div class="viewcode-block" id="feature_df_from_gnn_info"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.feature_df_from_gnn_info">[docs]</a><span class="k">def</span> <span class="nf">feature_df_from_gnn_info</span><span class="p">(</span>
+    <span class="n">gnn_info</span><span class="p">,</span>
+    <span class="n">return_data_labels_split</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">inf_fill_value</span> <span class="o">=</span> <span class="mi">10000</span><span class="p">,</span>
+    <span class="n">add_negative_label</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+    
+    
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">gnn_info</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">])</span>
+    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">gnn_info</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+
+    <span class="n">df</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">replace</span><span class="p">([</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">],</span><span class="n">inf_fill_value</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">label_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">label_name</span> <span class="o">=</span> <span class="n">gnn_info</span><span class="p">[</span><span class="n">label_name</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">return_data_labels_split</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">label_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">label_name</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">tuple</span><span class="p">:</span>
+                <span class="n">label_name</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">nu</span><span class="o">.</span><span class="n">convert_to_array_like</span><span class="p">(</span><span class="n">label_name</span><span class="p">))</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">label_name</span><span class="p">)]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">delete_columns</span><span class="p">(</span><span class="n">df</span><span class="p">,</span><span class="n">label_name</span><span class="p">)</span>
+            
+            <span class="k">if</span> <span class="n">y</span><span class="o">.</span><span class="n">ndim</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span> <span class="c1">#have to convert it back from one hot encoding</span>
+                <span class="k">if</span> <span class="n">add_negative_label</span><span class="p">:</span>
+                    <span class="c1">#print(f&quot;Adding negative label&quot;)</span>
+                    <span class="n">new_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">y</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span><span class="mi">1</span><span class="p">))</span>
+                    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">new_col</span><span class="p">,</span><span class="n">y</span><span class="p">])</span>
+                <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">df</span>
+            
+        
+
+        <span class="k">return</span> <span class="n">x</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span><span class="n">y</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="feature_df_from_adj_feature_dict"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.feature_df_from_adj_feature_dict">[docs]</a><span class="k">def</span> <span class="nf">feature_df_from_adj_feature_dict</span><span class="p">(</span><span class="n">adj_feature_dict</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;pandas&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">])):</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">])</span>
+        <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+        <span class="n">df</span><span class="p">[</span><span class="s2">&quot;node&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;nodelist&quot;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span>
+        
+    <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="G_from_adj_feature_dict"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.G_from_adj_feature_dict">[docs]</a><span class="k">def</span> <span class="nf">G_from_adj_feature_dict</span><span class="p">(</span>
+    <span class="n">adj_feature_dict</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">filepath</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">plot</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: To recover the original graph</span>
+<span class="sd">    stored in the adjacency dict information</span>
+<span class="sd">    </span>
+<span class="sd">    Ex: </span>
+<span class="sd">    from neuron_morphology_tools from neurd import neuron_nx_io as nxio</span>
+<span class="sd">    G_rec = nxio.G_from_adj_feature_dict(</span>
+<span class="sd">        filepath = filepaths[1],</span>
+<span class="sd">        plot = True,</span>
+<span class="sd">        verbose = True</span>
+<span class="sd">        )</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    
+    <span class="k">if</span> <span class="n">adj_feature_dict</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Reading from </span><span class="si">{</span><span class="n">filepath</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">adj_feature_dict</span> <span class="o">=</span> <span class="n">su</span><span class="o">.</span><span class="n">decompress_pickle</span><span class="p">(</span><span class="n">filepath</span><span class="p">)</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">feature_df_from_adj_feature_dict</span><span class="p">(</span><span class="n">adj_feature_dict</span><span class="p">)</span>
+        
+    
+    <span class="n">G</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">G_from_adjacency_matrix</span><span class="p">(</span>
+    <span class="n">matrix</span> <span class="o">=</span> <span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;adjacency&quot;</span><span class="p">],</span>
+    <span class="n">nodelist</span> <span class="o">=</span> <span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;nodelist&quot;</span><span class="p">],</span>
+    <span class="n">plot</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    
+    <span class="n">G</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">set_node_attributes_from_df</span><span class="p">(</span><span class="n">G</span><span class="p">,</span><span class="n">df</span><span class="p">,</span><span class="n">index_name</span><span class="o">=</span><span class="s2">&quot;node&quot;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;label_name,graph_label = &quot;</span><span class="p">,(</span><span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;label_name&quot;</span><span class="p">],</span><span class="n">adj_feature_dict</span><span class="p">[</span><span class="s2">&quot;graph_label&quot;</span><span class="p">]))</span>
+    <span class="k">return</span> <span class="n">G</span></div>
+
+
+
+<span class="c1"># ----------------- exporting different types of graph attributes for GNNs -----------</span>
+<div class="viewcode-block" id="GNN_info_axon_vs_dendrite"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.GNN_info_axon_vs_dendrite">[docs]</a><span class="k">def</span> <span class="nf">GNN_info_axon_vs_dendrite</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="mi">100_000</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="s2">&quot;axon_label&quot;</span><span class="p">,</span>
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;./Axon_vs_Dendrite/&quot;</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;ax_vs_dendr&quot;</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    
+    
+    <span class="n">features_to_output</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;mesh_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_spines&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_spine_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_post&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_pre&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;n_synapse_head&quot;,</span>
+        <span class="c1">#&quot;parent_skeletal_angle&quot;,</span>
+        <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_upstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_no_spine&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_downstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;axon_label&quot;</span>
+        <span class="p">]</span>
+    
+    <span class="c1">#print(f&quot;return_filepaths =- {return_filepaths}&quot;)</span>
+    
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">export_GNN_info_dict</span><span class="p">(</span>
+            <span class="n">G</span><span class="p">,</span>
+            <span class="n">features_to_output</span><span class="o">=</span><span class="n">features_to_output</span><span class="p">,</span>
+            <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="n">remove_starter_branches</span><span class="p">,</span>
+            <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="n">divide_into_limbs</span><span class="p">,</span>
+
+            <span class="n">label_name</span> <span class="o">=</span> <span class="n">label_name</span><span class="p">,</span><span class="c1">#&quot;axon_label&quot;,</span>
+            <span class="n">graph_label</span> <span class="o">=</span> <span class="n">graph_label</span><span class="p">,</span>
+
+            <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="p">,</span>
+            <span class="n">distance_threshold_min</span> <span class="o">=</span> <span class="n">distance_threshold_min</span><span class="p">,</span>
+
+            <span class="c1">#output file features</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">,</span>
+            <span class="n">description</span> <span class="o">=</span> <span class="n">description</span><span class="p">,</span>
+            <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+        
+            <span class="n">return_filepaths</span> <span class="o">=</span> <span class="n">return_filepaths</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span>
+
+            <span class="p">)</span>
+    
+    
+    <span class="k">return</span> <span class="n">filepaths</span></div>
+    
+    
+<div class="viewcode-block" id="GNN_info_compartment_proof"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.GNN_info_compartment_proof">[docs]</a><span class="k">def</span> <span class="nf">GNN_info_compartment_proof</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;axon_label&quot;</span><span class="p">,</span><span class="s2">&quot;basal_label&quot;</span><span class="p">,</span><span class="s2">&quot;apical_label&quot;</span><span class="p">,),</span><span class="c1">#&quot;dendrite_label&quot;),</span>
+    
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;./Compartments_Proof/&quot;</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;compartment_proof&quot;</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    
+    
+    <span class="n">features_to_output</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;mesh_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_spines&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_spine_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_post&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_pre&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_head&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_neck&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;parent_skeletal_angle&quot;,</span>
+        <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_upstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_no_spine&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_downstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;axon_label&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;dendrite_label&quot;,</span>
+        <span class="s2">&quot;basal_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;apical_label&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+    
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">export_GNN_info_dict</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">features_to_output</span><span class="o">=</span><span class="n">features_to_output</span><span class="p">,</span>
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="n">remove_starter_branches</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="n">divide_into_limbs</span><span class="p">,</span>
+
+    <span class="n">label_name</span> <span class="o">=</span> <span class="n">label_name</span><span class="p">,</span><span class="c1">#&quot;axon_label&quot;,</span>
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="n">graph_label</span><span class="p">,</span>
+    
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span><span class="o">=</span><span class="n">distance_threshold_min</span><span class="p">,</span>
+    
+    <span class="c1">#output file features</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="n">description</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+        
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="n">return_filepaths</span><span class="p">,</span>
+    
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">filepaths</span></div>
+
+
+<div class="viewcode-block" id="GNN_info_merge_errors"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.GNN_info_merge_errors">[docs]</a><span class="k">def</span> <span class="nf">GNN_info_merge_errors</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="c1">#label_name = &quot;auto_proof_filter_label&quot;,</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;merge_clean&quot;</span><span class="p">,</span><span class="s2">&quot;merge_high_degree_branching_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_low_degree_branching_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_width_jump_up_axon_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_axon_on_dendrite_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_high_degree_branching_dendrite_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_width_jump_up_dendrite_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;merge_double_back_dendrite_label&quot;</span><span class="p">,),</span>
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+
+    <span class="n">axon_dendrite</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;./Merge_Errors/&quot;</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;merge_errors&quot;</span><span class="p">,</span>
+    
+    
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    
+    <span class="n">features_to_output</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;mesh_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_spines&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_spine_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_post&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_pre&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_head&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_neck&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;parent_skeletal_angle&quot;,</span>
+        <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_upstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_no_spine&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_downstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;min_dist_synapses_pre_downstream_clip&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;min_dist_synapses_pre_upstream_clip&quot;</span><span class="p">,</span>
+        
+    <span class="p">]</span>
+    
+    <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">label_name</span><span class="p">)</span> <span class="o">==</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="n">features_to_output</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">label_name</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">features_to_output</span> <span class="o">+=</span> <span class="n">label_name</span>
+
+    
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">export_GNN_info_dict</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">features_to_output</span><span class="o">=</span><span class="n">features_to_output</span><span class="p">,</span>
+        <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="n">remove_starter_branches</span><span class="p">,</span>
+        <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="n">divide_into_limbs</span><span class="p">,</span>
+
+        <span class="n">label_name</span> <span class="o">=</span> <span class="n">label_name</span><span class="p">,</span><span class="c1">#&quot;axon_label&quot;,</span>
+        <span class="n">graph_label</span> <span class="o">=</span> <span class="n">graph_label</span><span class="p">,</span>
+
+        <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="p">,</span>
+        <span class="n">distance_threshold_min</span><span class="o">=</span><span class="n">distance_threshold_min</span><span class="p">,</span>
+
+        <span class="c1">#output file features</span>
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">,</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">description</span><span class="p">,</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+
+        <span class="n">axon_dendrite</span> <span class="o">=</span> <span class="n">axon_dendrite</span><span class="p">,</span>
+        <span class="n">return_filepaths</span> <span class="o">=</span> <span class="n">return_filepaths</span>
+        <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">filepaths</span></div>
+
+
+<div class="viewcode-block" id="GNN_info_cell_type_fine"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.GNN_info_cell_type_fine">[docs]</a><span class="k">def</span> <span class="nf">GNN_info_cell_type_fine</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">distance_threshold</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">distance_threshold_min</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+
+    <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">label_name</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">graph_label</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+
+    <span class="n">axon_dendrite</span> <span class="o">=</span> <span class="s2">&quot;dendrite&quot;</span><span class="p">,</span>
+    
+    <span class="n">return_filepaths</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">folder</span> <span class="o">=</span> <span class="s2">&quot;./Cell_Type_Fine/&quot;</span><span class="p">,</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="s2">&quot;cell_type_fine&quot;</span><span class="p">,</span>
+    
+    
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+    
+    <span class="n">features_to_output</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="s2">&quot;mesh_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_spines&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;total_spine_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_post&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_pre&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_head&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_synapses_neck&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;parent_skeletal_angle&quot;,</span>
+        <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_upstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_theta&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;skeleton_vector_downstream_phi&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_upstream&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_no_spine&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;width_downstream&quot;</span><span class="p">,</span>
+        <span class="c1">#&quot;axon_label&quot;,</span>
+        <span class="c1">#&quot;dendrite_label&quot;,</span>
+        <span class="s2">&quot;basal_label&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;apical_label&quot;</span>
+        <span class="p">]</span>
+    
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">export_GNN_info_dict</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">features_to_output</span><span class="o">=</span><span class="n">features_to_output</span><span class="p">,</span>
+        <span class="n">remove_starter_branches</span> <span class="o">=</span> <span class="n">remove_starter_branches</span><span class="p">,</span>
+        <span class="n">divide_into_limbs</span> <span class="o">=</span> <span class="n">divide_into_limbs</span><span class="p">,</span>
+
+        <span class="n">label_name</span> <span class="o">=</span> <span class="n">label_name</span><span class="p">,</span><span class="c1">#&quot;axon_label&quot;,</span>
+        <span class="n">graph_label</span> <span class="o">=</span> <span class="n">graph_label</span><span class="p">,</span>
+
+        <span class="n">distance_threshold</span> <span class="o">=</span> <span class="n">distance_threshold</span><span class="p">,</span>
+        <span class="n">distance_threshold_min</span><span class="o">=</span><span class="n">distance_threshold_min</span><span class="p">,</span>
+
+        <span class="c1">#output file features</span>
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">folder</span><span class="p">,</span>
+        <span class="n">description</span> <span class="o">=</span> <span class="n">description</span><span class="p">,</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">verbose</span><span class="p">,</span>
+
+        <span class="n">axon_dendrite</span> <span class="o">=</span> <span class="n">axon_dendrite</span><span class="p">,</span>
+        <span class="n">return_filepaths</span> <span class="o">=</span> <span class="n">return_filepaths</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">filepaths</span></div>
+
+
+<span class="c1"># ------------ For the simplified version of Gnn CODE -------------</span>
+<div class="viewcode-block" id="compressed_dict_from_G"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.compressed_dict_from_G">[docs]</a><span class="k">def</span> <span class="nf">compressed_dict_from_G</span><span class="p">(</span>
+    <span class="n">G</span><span class="p">,</span>
+    <span class="n">features</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">graph_identifiers</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;segment_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;split_index&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;nucleus_id&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;external_layer&quot;</span><span class="p">),</span>
+    <span class="n">dense_adjacency</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">data_name</span> <span class="o">=</span> <span class="s2">&quot;data&quot;</span>
+    <span class="p">):</span>
+    
+    <span class="n">g_atts</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">graph_attr_dict</span><span class="p">(</span><span class="n">G</span><span class="p">)</span>
+    <span class="n">curr_dict</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span><span class="n">g_atts</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">graph_identifiers</span><span class="p">}</span>
+    <span class="n">curr_dict</span><span class="p">[</span><span class="n">data_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">adjacency_feature_info</span><span class="p">(</span>
+        <span class="n">G</span><span class="p">,</span>
+        <span class="n">return_df_for_feature_matrix</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="n">feature_matrix_dtype</span> <span class="o">=</span> <span class="s2">&quot;float&quot;</span><span class="p">,</span>
+        <span class="n">dense_adjacency</span><span class="o">=</span><span class="n">dense_adjacency</span><span class="p">,</span>
+        <span class="n">features</span><span class="o">=</span><span class="n">features</span>
+    <span class="p">)</span>
+    
+    <span class="k">return</span> <span class="n">curr_dict</span></div>
+
+<div class="viewcode-block" id="combine_limb_graph_data"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.combine_limb_graph_data">[docs]</a><span class="k">def</span> <span class="nf">combine_limb_graph_data</span><span class="p">(</span>
+    <span class="n">graph_data</span><span class="p">,</span>
+    <span class="n">limb_idx</span><span class="p">,</span>
+    <span class="n">return_cluster_matrix</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">flat_cluster_matrix</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">max_nodes</span> <span class="o">=</span> <span class="mi">250</span><span class="p">,</span>
+    <span class="n">max_limbs</span> <span class="o">=</span> <span class="mi">25</span><span class="p">,</span>
+    <span class="n">limb_attributes_to_add</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+
+    <span class="n">all_graph_data</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="n">graph_data</span><span class="p">)</span>
+
+    <span class="n">n_nodes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">([</span><span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;nodelist&quot;</span><span class="p">])</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">all_graph_data</span> <span class="p">])</span>
+    
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;n_nodes = </span><span class="si">{</span><span class="n">n_nodes</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">node_count</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">nodelist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">adjacency_edges</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">features_list</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_edges</span> <span class="o">=</span> <span class="mi">0</span>
+
+
+    <span class="n">big_adj</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">n_nodes</span><span class="p">,</span><span class="n">n_nodes</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;int&#39;</span><span class="p">)</span>
+    
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">flat_cluster_matrix</span><span class="p">:</span>
+        <span class="n">clust_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">max_limbs</span><span class="p">,</span><span class="n">max_nodes</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">clust_matrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">n_nodes</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;int&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">l_idx</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">limb_idx</span><span class="p">):</span>
+        <span class="n">g</span> <span class="o">=</span> <span class="n">all_graph_data</span><span class="p">[</span><span class="n">j</span><span class="p">][</span><span class="s2">&quot;data&quot;</span><span class="p">]</span>
+        <span class="n">curr_n_nodes</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;nodelist&quot;</span><span class="p">])</span>
+
+
+        <span class="n">adj_matrix</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="s2">&quot;adjacency&quot;</span><span class="p">]</span>
+        <span class="n">big_adj</span><span class="p">[</span><span class="n">node_count</span><span class="p">:</span><span class="n">node_count</span><span class="o">+</span><span class="n">curr_n_nodes</span><span class="p">,</span><span class="n">node_count</span><span class="p">:</span><span class="n">node_count</span><span class="o">+</span><span class="n">curr_n_nodes</span><span class="p">]</span> <span class="o">=</span> <span class="n">adj_matrix</span>
+
+        <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">node_count</span><span class="p">,</span><span class="n">node_count</span><span class="o">+</span><span class="n">curr_n_nodes</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;adj_matrix = </span><span class="se">\n</span><span class="si">{</span><span class="n">adj_matrix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">curr_features</span> <span class="o">=</span> <span class="n">g</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">limb_attributes_to_add</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">curr_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">v</span><span class="p">[</span><span class="n">j</span><span class="p">]</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">limb_attributes_to_add</span><span class="o">.</span><span class="n">values</span><span class="p">()])</span>
+            <span class="n">features_values</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span>
+                <span class="n">curr_array</span><span class="p">,</span>
+                <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">curr_features</span><span class="p">),</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1">#print(f&quot;curr_features.shape ={curr_features.shape}&quot;)</span>
+            <span class="n">curr_features</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">curr_features</span><span class="p">,</span><span class="n">features_values</span><span class="p">])</span>
+
+
+        <span class="n">features_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">curr_features</span><span class="p">)</span>
+        <span class="n">nodelist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">g</span><span class="p">[</span><span class="s2">&quot;nodelist&quot;</span><span class="p">])</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">flat_cluster_matrix</span><span class="p">:</span>
+            <span class="n">clust_matrix</span><span class="p">[</span><span class="n">j</span><span class="p">,</span><span class="n">node_count</span><span class="p">:</span><span class="n">node_count</span><span class="o">+</span><span class="n">curr_n_nodes</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="n">curr_n_nodes</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">clust_matrix</span><span class="p">[</span><span class="n">node_count</span><span class="p">:</span><span class="n">node_count</span><span class="o">+</span><span class="n">curr_n_nodes</span><span class="p">]</span> <span class="o">=</span> <span class="n">j</span>
+            
+        <span class="n">node_count</span> <span class="o">+=</span> <span class="n">curr_n_nodes</span>
+
+    <span class="n">nodelist</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">nodelist</span><span class="p">)</span>
+    <span class="n">features_list</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">features_list</span><span class="p">)</span>
+    
+    
+    <span class="n">new_graph_data</span> <span class="o">=</span> <span class="n">all_graph_data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">fnames</span> <span class="o">=</span> <span class="n">new_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">limb_attributes_to_add</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">features_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">limb_attributes_to_add</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+        <span class="n">fnames</span> <span class="o">+=</span> <span class="n">features_names</span>
+    
+
+    <span class="c1"># put back into one giant graph data</span>
+    
+    <span class="n">new_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">replace_nan_with_zero</span><span class="p">(</span><span class="n">features_list</span><span class="p">)</span>
+    <span class="n">new_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;nodelist&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nodelist</span>
+    <span class="n">new_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;adjacency&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">big_adj</span>
+    <span class="n">new_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fnames</span>
+    
+    <span class="k">if</span> <span class="n">return_cluster_matrix</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">new_graph_data</span><span class="p">,</span><span class="n">clust_matrix</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">new_graph_data</span></div>
+    
+    
+    
+
+<div class="viewcode-block" id="limb_df_for_train_from_limb_df"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.limb_df_for_train_from_limb_df">[docs]</a><span class="k">def</span> <span class="nf">limb_df_for_train_from_limb_df</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">limb_attributes_to_add_to_branches</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;soma_start_angle_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_soma_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_syn_soma&quot;</span>
+        <span class="p">),</span>
+    <span class="n">node_weight_name</span> <span class="o">=</span> <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+    <span class="n">edge_weight</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">edge_weight_method</span> <span class="o">=</span> <span class="s2">&quot;max&quot;</span><span class="p">,</span>
+    
+    <span class="n">add_pool_suffix</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    
+    <span class="n">add_self_loops</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">add_pool_suffix</span><span class="p">:</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;_pool0&quot;</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+      
+    
+    <span class="n">new_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">all_dicts</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">df_to_dicts</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">data</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">enumerate</span><span class="p">(</span><span class="n">all_dicts</span><span class="p">)):</span>
+<span class="c1">#         if j &gt; 50:</span>
+<span class="c1">#             break</span>
+        <span class="n">graph_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="s2">&quot;graph_data&quot;</span><span class="p">]</span>
+        <span class="n">ex_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;names</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;nodelist&quot;</span><span class="p">]</span>
+    
+        <span class="c1"># -- adding the new features and </span>
+        
+        <span class="k">if</span> <span class="n">limb_attributes_to_add_to_branches</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x_features</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;features&quot;</span><span class="p">],</span><span class="n">limb_attributes_to_add_to_branches</span><span class="p">])</span>
+            
+            <span class="n">curr_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">data</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">limb_attributes_to_add_to_branches</span><span class="p">])</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span>
+                <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">],</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span>
+                    <span class="n">curr_array</span><span class="p">,</span>
+                    <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]),</span><span class="mi">1</span><span class="p">))</span>
+            <span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x_features</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span>
+            
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">replace_nan_with_zero</span><span class="p">(</span> <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span>
+        
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])):</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">edge_list_from_adjacency_matrix</span><span class="p">(</span>
+            <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;adjacency&quot;</span><span class="p">],</span>
+            <span class="n">add_self_loops</span><span class="o">=</span><span class="n">add_self_loops</span><span class="p">)</span>
+
+        
+
+        <span class="k">if</span> <span class="n">node_weight_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sk_length_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x_features</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span> <span class="o">==</span> <span class="n">node_weight_name</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">weight_values</span> <span class="o">=</span> <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][:,</span><span class="n">sk_length_idx</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;node_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight_values</span>
+
+        <span class="k">if</span> <span class="n">edge_weight</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">np</span><span class="p">,</span><span class="n">edge_weight_method</span><span class="p">)(</span>
+                    <span class="n">weight_values</span><span class="p">[</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+        
+        <span class="n">new_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">)</span>
+    
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">df</span><span class="p">,</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">(</span><span class="n">new_dicts</span><span class="p">)],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span></div>
+        
+                
+    
+<div class="viewcode-block" id="neuron_df_for_train_from_limb_df"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.neuron_df_for_train_from_limb_df">[docs]</a><span class="k">def</span> <span class="nf">neuron_df_for_train_from_limb_df</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">sort_attributes</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span><span class="c1">#(&quot;soma_start_angle_max&quot;,)</span>
+    <span class="n">limb_attributes_to_add_to_branches</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;soma_start_angle_max&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;max_soma_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_syn_soma&quot;</span>
+        <span class="p">),</span>
+    <span class="n">add_limb_attributes_to_branches_even_if_hierarchical</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    
+    <span class="n">add_pool_suffix</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    
+    <span class="n">node_weight_name</span> <span class="o">=</span> <span class="s2">&quot;skeletal_length&quot;</span><span class="p">,</span>
+    <span class="n">edge_weight</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">edge_weight_method</span> <span class="o">=</span> <span class="s2">&quot;max&quot;</span><span class="p">,</span>
+    
+    
+    <span class="c1">#--- for hierarchical ---</span>
+    <span class="n">export_pool1_clusters</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    
+    <span class="n">hierarchical</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">attributes_pool1</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;soma_start_angle_max&quot;</span><span class="p">,),</span>
+    <span class="n">attributes_pool1_extra</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">attributes_pool2</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;max_soma_volume&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;n_syn_soma&quot;</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">graph_type</span> <span class="o">=</span> <span class="s2">&quot;binary_tree&quot;</span><span class="p">,</span><span class="c1">#&quot;complete_graph&quot;</span>
+    <span class="n">add_density_to_graph_data</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose_time</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+    
+    <span class="k">if</span> <span class="n">add_density_to_graph_data</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">add_density_to_graph_data_in_df</span><span class="p">(</span>
+            <span class="n">df</span><span class="p">,</span>
+            <span class="n">in_place</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        
+    
+    
+    <span class="k">if</span> <span class="n">attributes_pool1</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">attributes_pool1</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">attributes_pool1</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">attributes_pool1</span> <span class="o">=</span> <span class="p">[]</span>
+    
+    <span class="k">if</span> <span class="n">attributes_pool2</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">attributes_pool2</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">attributes_pool2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">attributes_pool2</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">if</span> <span class="n">hierarchical</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">add_limb_attributes_to_branches_even_if_hierarchical</span><span class="p">:</span>
+        <span class="n">limb_attributes_to_add_to_branches</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">setdiff1d</span><span class="p">(</span>
+            <span class="n">limb_attributes_to_add_to_branches</span><span class="p">,</span><span class="n">np</span><span class="o">.</span><span class="n">union1d</span><span class="p">(</span><span class="n">attributes_pool1</span><span class="p">,</span><span class="n">attributes_pool2</span><span class="p">)</span>
+        <span class="p">)</span>
+    
+    <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    
+    <span class="c1"># the new faster way of splitting the dataframe</span>
+    <span class="n">all_dfs</span><span class="p">,</span><span class="n">keys</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">split_df_by_groupby_column</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">,</span>
+        <span class="n">column</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;segment_id&quot;</span><span class="p">,</span><span class="s2">&quot;split_index&quot;</span><span class="p">],</span>
+        <span class="n">return_keys</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="c1">#     unique_seg_split = pu.filter_to_first_instance_of_unique_column(</span>
+<span class="c1">#         df[[&quot;segment_id&quot;,&quot;split_index&quot;]],</span>
+<span class="c1">#         column_name=[&quot;segment_id&quot;,&quot;split_index&quot;]</span>
+<span class="c1">#     )</span>
+    <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for filter_to_first_instance_of_unique_column = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+    
+    <span class="k">if</span> <span class="n">edge_weight</span><span class="p">:</span>
+        <span class="n">add_self_loops</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">add_self_loops</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">new_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1">#segs_splits = unique_seg_split.index.to_numpy()</span>
+    <span class="c1">#for segment_id,split_index in tqdm(segs_splits):</span>
+    
+    <span class="k">for</span> <span class="n">curr_df</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">all_dfs</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="n">global_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            
+<span class="c1">#         curr_df = df.query(f&quot;(segment_id=={segment_id}) and (split_index == {split_index})&quot;)</span>
+        
+<span class="c1">#         if verbose_time:</span>
+<span class="c1">#             print(f&quot;time for dataframe query = {time.time() - st}&quot;)</span>
+<span class="c1">#             st = time.time()</span>
+
+        <span class="k">if</span> <span class="n">sort_attributes</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">curr_df</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">sort_df_by_column</span><span class="p">(</span>
+                <span class="n">curr_df</span><span class="p">,</span>
+                <span class="n">columns</span><span class="o">=</span><span class="n">sort_attributes</span><span class="p">)</span>
+
+        <span class="n">limb_idx</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="s2">&quot;limb_idx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>    
+
+        <span class="k">if</span> <span class="n">limb_attributes_to_add_to_branches</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">limb_attributes_to_add_to_branches</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">limb_attributes_to_add</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">f</span><span class="p">:</span><span class="n">curr_df</span><span class="p">[</span><span class="n">f</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">limb_attributes_to_add_to_branches</span>
+            <span class="p">}</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">limb_attributes_to_add</span> <span class="o">=</span> <span class="kc">None</span>
+            
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for BEFORE combine_limb_graph_data = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">graph_data</span><span class="p">,</span><span class="n">clust_matrix</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">combine_limb_graph_data</span><span class="p">(</span>
+            <span class="n">graph_data</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="s2">&quot;graph_data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">(),</span>
+            <span class="n">limb_idx</span> <span class="o">=</span> <span class="n">limb_idx</span><span class="p">,</span>
+            <span class="n">limb_attributes_to_add</span><span class="o">=</span><span class="n">limb_attributes_to_add</span>
+        <span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for combine_limb_graph_data = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        
+        <span class="k">if</span> <span class="n">add_pool_suffix</span> <span class="ow">or</span> <span class="n">hierarchical</span><span class="p">:</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;_pool0&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">suffix</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            
+        
+
+        <span class="n">ex_dict</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">df_to_dicts</span><span class="p">(</span><span class="n">curr_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[:</span><span class="mi">1</span><span class="p">,:])[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;names</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;nodelist&quot;</span><span class="p">]</span>
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x_features</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span>
+        <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">edge_list_from_adjacency_matrix</span><span class="p">(</span>
+            <span class="n">graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">][</span><span class="s2">&quot;adjacency&quot;</span><span class="p">],</span>
+            <span class="n">bidirectional</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="n">add_self_loops</span><span class="o">=</span><span class="n">add_self_loops</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for assigning nodelist,feautres,feature_matrix and edge_index = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        
+        <span class="n">sk_length_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x_features</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span> <span class="o">==</span> <span class="n">node_weight_name</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">weight_values</span> <span class="o">=</span> <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;x</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">][:,</span><span class="n">sk_length_idx</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">node_weight_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;node_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight_values</span>
+            
+        <span class="k">if</span> <span class="n">edge_weight</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">np</span><span class="p">,</span><span class="n">edge_weight_method</span><span class="p">)(</span>
+                    <span class="n">weight_values</span><span class="p">[</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight</span><span class="si">{</span><span class="n">suffix</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+            
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for calculating edge and node weights = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            
+        <span class="k">if</span> <span class="n">hierarchical</span> <span class="ow">or</span> <span class="n">export_pool1_clusters</span><span class="p">:</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;pool1_names&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">limb_idx</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">clust_matrix</span>
+
+        <span class="c1"># ---- adding on all of the extra components for heirarchical pooling ------</span>
+        
+        <span class="k">if</span> <span class="n">hierarchical</span><span class="p">:</span>
+            
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">attributes_pool1</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">attributes_pool1</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="n">attributes_pool1</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_features_pool1&quot;</span><span class="p">]</span> <span class="o">=</span>  <span class="n">attributes_pool1</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;edge_index_pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xu</span><span class="o">.</span><span class="n">edge_list_from_graph_type</span><span class="p">(</span>
+                <span class="n">n</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">limb_idx</span><span class="p">),</span>
+                <span class="n">graph_type</span><span class="o">=</span><span class="n">graph_type</span><span class="p">,</span>
+                <span class="n">bidirectional</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+                <span class="n">plot</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">add_self_loops</span><span class="o">=</span><span class="n">add_self_loops</span><span class="p">,</span>
+            <span class="p">)</span>
+            
+            <span class="n">weight_values</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="n">node_weight_name</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+        
+            <span class="k">if</span> <span class="n">node_weight_name</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;node_weight_pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">weight_values</span>
+
+            <span class="k">if</span> <span class="n">edge_weight</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index_pool1&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight_pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">np</span><span class="p">,</span><span class="n">edge_weight_method</span><span class="p">)(</span>
+                        <span class="n">weight_values</span><span class="p">[</span><span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_index_pool1&quot;</span><span class="p">]],</span><span class="n">axis</span><span class="o">=</span><span class="mi">1</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;float&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">ex_dict</span><span class="p">[</span><span class="sa">f</span><span class="s2">&quot;edge_weight_pool1&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([])</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;float&#39;</span><span class="p">)</span>
+            
+            <span class="c1"># adding on extra features to carry with</span>
+            <span class="k">if</span> <span class="n">attributes_pool1_extra</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">attributes_pool1_extra</span><span class="p">))</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_pool1_extra&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="n">attributes_pool1_extra</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">shape</span><span class="p">)</span>
+                <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_features_pool1_extra&quot;</span><span class="p">]</span> <span class="o">=</span>  <span class="n">attributes_pool1_extra</span>
+            
+
+            <span class="c1">#ex_dict[&quot;x_pool2&quot;] = curr_df[attributes_pool2].to_numpy()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">attributes_pool2</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="nb">len</span><span class="p">(</span><span class="n">attributes_pool2</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">shape</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">0</span><span class="p">)</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_pool2&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="n">attributes_pool2</span><span class="p">]</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;x_features_pool2&quot;</span><span class="p">]</span> <span class="o">=</span>  <span class="n">attributes_pool2</span>
+            
+            
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for hierarchical = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            
+        <span class="k">del</span> <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;graph_data&quot;</span><span class="p">]</span>
+        
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;time for graph data deletion = </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">st</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">st</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">new_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">verbose_time</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Time per segment: </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">global_time</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">global_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+
+    <span class="n">df_with_labels</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">(</span><span class="n">new_dicts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_with_labels</span></div>
+
+
+<div class="viewcode-block" id="aggregate_embedding_df_by_seg_split"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.aggregate_embedding_df_by_seg_split">[docs]</a><span class="k">def</span> <span class="nf">aggregate_embedding_df_by_seg_split</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">embed_cols</span><span class="p">,</span>
+    <span class="n">decoder_map</span><span class="p">,</span>
+    <span class="n">weight_by_skeleton</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: Want a combined embedding from all the limbs</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">neurd</span> <span class="kn">import</span> <span class="n">cell_type_utils</span> <span class="k">as</span> <span class="n">ctu</span>
+    <span class="n">unique_seg_split</span> <span class="o">=</span> <span class="n">pu</span><span class="o">.</span><span class="n">filter_to_first_instance_of_unique_column</span><span class="p">(</span>
+        <span class="n">df</span><span class="p">[[</span><span class="s2">&quot;segment_id&quot;</span><span class="p">,</span><span class="s2">&quot;split_index&quot;</span><span class="p">]],</span>
+        <span class="n">column_name</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;segment_id&quot;</span><span class="p">,</span><span class="s2">&quot;split_index&quot;</span><span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="n">new_dicts</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">segs_splits</span> <span class="o">=</span> <span class="n">unique_seg_split</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">segment_id</span><span class="p">,</span><span class="n">split_index</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">segs_splits</span><span class="p">):</span>
+        <span class="n">curr_df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;(segment_id==</span><span class="si">{</span><span class="n">segment_id</span><span class="si">}</span><span class="s2">) and (split_index == </span><span class="si">{</span><span class="n">split_index</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+        <span class="n">ex_dict</span> <span class="o">=</span> <span class="n">curr_df</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">,:]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="n">skeletal_length</span> <span class="o">=</span> <span class="n">curr_df</span><span class="p">[</span><span class="s2">&quot;skeletal_length&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span>
+
+        <span class="n">ex_dict</span><span class="p">[</span><span class="s2">&quot;skeletal_length&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">skeletal_length</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">weight_by_skeleton</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">skeletal_length</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">weights</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">skeletal_length</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+
+        <span class="n">curr_embed</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">weighted_average_along_axis</span><span class="p">(</span><span class="n">curr_df</span><span class="p">[</span><span class="n">embed_cols</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">(),</span><span class="n">weights</span><span class="p">,</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">new_embed_dict</span> <span class="o">=</span> <span class="p">{</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_aggr&quot;</span><span class="p">:</span><span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span><span class="n">v</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">embed_cols</span><span class="p">,</span><span class="n">curr_embed</span><span class="p">)}</span>
+
+        <span class="n">winning_idx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">curr_embed</span><span class="p">)</span>
+        <span class="n">cell_type_dict</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+            <span class="n">cell_type_predicted_aggr</span> <span class="o">=</span> <span class="n">decoder_map</span><span class="p">[</span><span class="n">winning_idx</span><span class="p">],</span>
+            <span class="n">cell_type_predicted_prob_aggr</span> <span class="o">=</span> <span class="n">curr_embed</span><span class="p">[</span><span class="n">winning_idx</span><span class="p">],</span>
+            <span class="n">e_i_predicted_aggr</span> <span class="o">=</span> <span class="n">ctu</span><span class="o">.</span><span class="n">allen_cell_type_fine_classifier_to_e_i_map</span><span class="p">[</span><span class="n">decoder_map</span><span class="p">[</span><span class="n">winning_idx</span><span class="p">]])</span>
+
+        <span class="n">ex_dict</span> <span class="o">=</span> <span class="n">gu</span><span class="o">.</span><span class="n">merge_dicts</span><span class="p">([</span><span class="n">ex_dict</span><span class="p">,</span><span class="n">new_embed_dict</span><span class="p">,</span><span class="n">cell_type_dict</span><span class="p">])</span>
+        <span class="n">new_dicts</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ex_dict</span><span class="p">)</span>
+
+    <span class="n">df_aggr</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="o">.</span><span class="n">from_records</span><span class="p">(</span><span class="n">new_dicts</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df_aggr</span></div>
+
+<div class="viewcode-block" id="add_density_to_graph_data"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.add_density_to_graph_data">[docs]</a><span class="k">def</span> <span class="nf">add_density_to_graph_data</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">replace_features</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">in_place</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: To compute density features for all</span>
+<span class="sd">    features that </span>
+
+<span class="sd">    1) Get the features to compute densities for</span>
+<span class="sd">    and the columns they will be derived from</span>
+<span class="sd">    2) Compute the densities</span>
+<span class="sd">    3) Either replace existing columns or append</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_place</span><span class="p">:</span>
+        <span class="n">curr_graph_data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">curr_graph_data</span> <span class="o">=</span> <span class="n">data</span>
+
+    <span class="n">feature_names</span> <span class="o">=</span> <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span>
+    <span class="n">density_columns</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">j</span><span class="p">,</span><span class="n">k</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">feature_names</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span><span class="p">(</span><span class="s2">&quot;n_&quot;</span> <span class="o">==</span> <span class="n">k</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="ow">or</span> <span class="s2">&quot;sum&quot;</span> <span class="o">==</span> <span class="n">k</span><span class="p">[</span><span class="o">-</span><span class="mi">3</span><span class="p">:]</span> <span class="ow">and</span> <span class="s2">&quot;density&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">k</span><span class="p">):</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="s2">&quot;n_&quot;</span> <span class="o">==</span> <span class="n">k</span><span class="p">[:</span><span class="mi">2</span><span class="p">]:</span>
+            <span class="n">density_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="p">[</span><span class="mi">2</span><span class="p">:]</span><span class="si">}</span><span class="s2">_density&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">density_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="p">[:</span><span class="o">-</span><span class="mi">4</span><span class="p">]</span><span class="si">}</span><span class="s2">_density&quot;</span>
+
+        <span class="k">if</span> <span class="n">density_name</span> <span class="ow">in</span> <span class="n">feature_names</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">density_columns</span><span class="p">[</span><span class="n">density_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">j</span>
+
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;# of density_columns = </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">density_columns</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">skeletal_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;skeletal_length&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">density_columns</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">cols_to_compute</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">density_columns</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+        <span class="n">feature_matrix_density</span> <span class="o">=</span> <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">][:,</span><span class="n">cols_to_compute</span><span class="p">]</span><span class="o">/</span><span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">][:,[</span><span class="n">skeletal_col</span><span class="p">]]</span>
+        <span class="n">features_density</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">density_columns</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
+
+        <span class="k">if</span> <span class="n">replace_features</span><span class="p">:</span>
+            <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">][</span><span class="n">cols_to_compute</span><span class="p">]</span> <span class="o">=</span> <span class="n">feature_matrix_density</span>
+            <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">][</span><span class="n">cols_to_compute</span><span class="p">]</span> <span class="o">=</span> <span class="n">features_density</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">],</span><span class="n">feature_matrix_density</span><span class="p">])</span>
+            <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;features&quot;</span><span class="p">],</span><span class="n">features_density</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;New feature matrix shape = </span><span class="si">{</span><span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;feature_matrix&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">curr_graph_data</span></div>
+
+<div class="viewcode-block" id="add_density_to_graph_data_in_df"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.add_density_to_graph_data_in_df">[docs]</a><span class="k">def</span> <span class="nf">add_density_to_graph_data_in_df</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">in_place</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">replace_features</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpose: to increment the graph data</span>
+<span class="sd">    in a dataframe storage with density attributes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">in_place</span><span class="p">:</span>
+        <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">deep</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">curr_graphs</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="s2">&quot;graph_data&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">to_list</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">curr_graph_data</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">curr_graphs</span><span class="p">):</span>
+        <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nxio</span><span class="o">.</span><span class="n">add_density_to_graph_data</span><span class="p">(</span>
+            <span class="n">curr_graph_data</span><span class="p">[</span><span class="s2">&quot;data&quot;</span><span class="p">],</span>
+            <span class="n">in_place</span> <span class="o">=</span> <span class="n">in_place</span><span class="p">,</span>
+            <span class="n">replace_features</span><span class="o">=</span><span class="n">replace_features</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+<div class="viewcode-block" id="add_skeletal_length_xyz_to_df_x_features_x_pool"><a class="viewcode-back" href="../../neuron_morphology_tools.html#neuron_morphology_tools.neuron_nx_io.add_skeletal_length_xyz_to_df_x_features_x_pool">[docs]</a><span class="k">def</span> <span class="nf">add_skeletal_length_xyz_to_df_x_features_x_pool</span><span class="p">(</span>
+    <span class="n">df</span><span class="p">,</span>
+    <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Purpsose: Want to add skeletal length to the features list</span>
+<span class="sd">    and x features if didn&#39;t already exist</span>
+
+<span class="sd">    Pseudocode: </span>
+<span class="sd">    For each row in the dataframe: </span>
+<span class="sd">    1) Check if the [skeletal_length_x/y,z] in the features</span>
+<span class="sd">    if not</span>
+<span class="sd">    2) Estimate the skeletal_length_x/y/z using the upstream_theta/phi</span>
+<span class="sd">    for all of the branches</span>
+<span class="sd">    3) Add the  skeletal_length_x/y/z names to the x_features_pool0</span>
+<span class="sd">    4) </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">))):</span>
+        <span class="c1">#curr_dict = df_with_labels.iloc[0,:].to_dict()</span>
+        <span class="n">feature_names</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="s2">&quot;x_features_pool0&quot;</span><span class="p">]</span>
+
+        <span class="n">skeletal_length_axes_names</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s2">&quot;skeletal_length_x&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;skeletal_length_y&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;skeletal_length_z&quot;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="n">skeleton_angles_names</span> <span class="o">=</span> <span class="p">[</span>
+         <span class="s1">&#39;skeletal_length&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;skeleton_vector_upstream_theta&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;skeleton_vector_upstream_phi&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;skeleton_vector_downstream_theta&#39;</span><span class="p">,</span>
+         <span class="s1">&#39;skeleton_vector_downstream_phi&#39;</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">any</span><span class="p">([</span><span class="n">k</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">feature_names</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">skeletal_length_axes_names</span><span class="p">]):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="s2">&quot;x_pool0&quot;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Adding skeletal length features&quot;</span><span class="p">)</span>
+
+            
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">skeleton_angles_names</span><span class="p">:</span>
+                <span class="n">exec</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_idx = [i for i,k in enumerate(feature_names) if k == &#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">&#39;][0]&quot;</span><span class="p">,</span><span class="nb">locals</span><span class="p">(),</span><span class="nb">globals</span><span class="p">())</span>
+
+                <span class="k">if</span> <span class="n">verbose</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">_idx = </span><span class="si">{</span><span class="nb">eval</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s1">_idx&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+            <span class="n">sk_theta</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[:,[</span><span class="n">skeleton_vector_upstream_theta_idx</span><span class="p">,</span><span class="n">skeleton_vector_downstream_theta_idx</span><span class="p">]],</span>
+                <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="p">)</span>
+            <span class="n">sk_phi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">[:,[</span><span class="n">skeleton_vector_upstream_phi_idx</span><span class="p">,</span><span class="n">skeleton_vector_downstream_phi_idx</span><span class="p">]],</span>
+                <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="p">)</span>
+
+            <span class="n">sk_len</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span><span class="n">skeletal_length_idx</span><span class="p">]</span>
+
+            <span class="c1">#calculate the skeletal lengths in all directions</span>
+            <span class="n">sk_xyz</span> <span class="o">=</span> <span class="n">nu</span><span class="o">.</span><span class="n">cartesian_3D_from_polar</span><span class="p">(</span>
+                <span class="n">r</span> <span class="o">=</span> <span class="n">sk_len</span><span class="p">,</span>
+                <span class="n">theta</span> <span class="o">=</span> <span class="n">sk_theta</span><span class="p">,</span>
+                <span class="n">phi</span> <span class="o">=</span> <span class="n">sk_phi</span> <span class="p">,</span>
+                <span class="n">return_array</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="c1">#store the values back in the </span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">x</span><span class="p">,</span><span class="n">sk_xyz</span><span class="p">])</span>
+            <span class="n">feature_names</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">feature_names</span><span class="p">)</span> <span class="o">+</span> <span class="n">skeletal_length_axes_names</span>
+
+            <span class="n">df</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="s2">&quot;x_features_pool0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">feature_names</span>
+            <span class="n">df</span><span class="o">.</span><span class="n">at</span><span class="p">[</span><span class="n">i</span><span class="p">,</span><span class="s2">&quot;x_pool0&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span>
+
+    <span class="k">return</span> <span class="n">df</span></div>
+
+<span class="c1">#--- from neuron_morphology_tools ---</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">neuron_nx_feature_processing</span> <span class="k">as</span> <span class="n">nxf</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">neuron_nx_utils</span> <span class="k">as</span> <span class="n">nxu</span>
+
+<span class="c1">#--- from datasci_tools ---</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">general_utils</span> <span class="k">as</span> <span class="n">gu</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">networkx_utils</span> <span class="k">as</span> <span class="n">xu</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">numpy_utils</span> <span class="k">as</span> <span class="n">nu</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">pandas_utils</span> <span class="k">as</span> <span class="n">pu</span>
+<span class="kn">from</span> <span class="nn">datasci_tools</span> <span class="kn">import</span> <span class="n">system_utils</span> <span class="k">as</span> <span class="n">su</span>
+<span class="kn">from</span> <span class="nn">datasci_tools.tqdm_utils</span> <span class="kn">import</span> <span class="n">tqdm</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">neuron_nx_io</span> <span class="k">as</span> <span class="n">nxio</span>
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, Brendan Celii.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
