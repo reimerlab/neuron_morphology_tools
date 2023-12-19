@@ -12,6 +12,7 @@ import networkx as nx
 from datasci_tools import numpy_dep as np
 import pandas as pd
 import time
+import numpy as np
 
 soma_node_name_global = "S0"
 node_label = "u"
@@ -161,7 +162,19 @@ def draw_tree(
     font_size = 20,
     font_color = "white",
     figsize=(32,32),
+    compartment_colors = True,
+    compartment_color_dict = None,
     **kwargs):
+    
+    if compartment_colors:
+        node_color = nxu.node_compartment_color_dict(
+            G = G,
+            compartment_color_dict=compartment_color_dict
+        )
+        
+        node_color = list(node_color.values())
+    else:
+        node_color = None
     
     xu.draw_tree(
         G,
@@ -170,6 +183,7 @@ def draw_tree(
         font_size = font_size,
         font_color = font_color,
         figsize=figsize,
+        node_color=node_color,
         **kwargs)
     
 skeletal_length_min_starter_branches_global = 700
@@ -539,6 +553,7 @@ def export_swc_file(
     directory="./",
     filepath = None,
     verbose = False,
+    header =True,
     **kwargs):
     """
     Purpose: Create a SWC file from 
@@ -557,12 +572,16 @@ def export_swc_file(
         
     return fileu.file_from_dicts(
         swc_dicts,
+        header = header,
         filename = filename,
         directory = directory,
         filepath = filepath,
         seperation_character=" ",
         verbose = verbose
     )
+    
+
+
 
 # -------------- computing morphology metrics using morphopy -----
 
@@ -4678,6 +4697,28 @@ def clean_G(
     
     return return_G
 
+def node_compartment_color_dict(
+    G,
+    compartment_color_dict=None):
+    
+    
+    comp_colors = nxu.compartment_colors.copy()
+    
+    if compartment_color_dict is not None:
+        comp_colors.update(compartment_color_dict)
+    
+    color_dict = dict([
+        (n,comp_colors[G.nodes[n]["compartment"]])
+         for n in G.nodes]
+    )
+    return color_dict
+
+def print_compartment_colors():
+    print(f"Compartment Colors")
+    print(f"------------------")
+    for k,v in nxu.compartment_colors.items():
+        print(f"   {k} : {v}")
+
 #     #4) Return the branches are convert them to coordinates
 #     if return_coordinates:
 #         return 
@@ -4689,6 +4730,8 @@ from . import morphopy_utils as mpu
 from . import neuron_nx_feature_processing as nxf  
 from . import neuron_nx_stats as nxst
 from . import neuron_skeleton_utils as nsku
+
+swc_df_from_file = mpu.swc_df_from_file
 
 #--- from datasci_tools ---
 from datasci_tools import file_utils as fileu

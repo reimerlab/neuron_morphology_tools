@@ -62,16 +62,24 @@ inh_features_berenslab = [
  'dendrite total length', 'dendrite width' ,'dendrite x-bias',
  'dendrite z-bias' ,'mean initial segment radius', 'normalized depth',
  'soma radius', 'stems', 'stems exiting down' ,'stems exiting to the sides',
- 'stems exiting up']  
-
-
+ 'stems exiting up'] 
+ 
 def swc_df_from_file(filepath):
     """
     Purpose: To read in a swc file as a dataframe
     """
     swc = pd.read_csv(filepath, delim_whitespace=True, comment='#',
        names=['n', 'type', 'x', 'y', 'z', 'radius', 'parent'], index_col=False, header=None)
+    
+    # check that header not already there
+    top_dict = swc.iloc[0,:].to_dict()
+    if np.any([isinstance(k,str) for k in top_dict.values()]):
+        swc = swc.iloc[1:,:]
+    
+    #swc["n"] = swc["n"].astype('int')
+    swc = swc.apply(pd.to_numeric)
     return swc
+
 
 
 def ntree_obj_from_swc(
@@ -170,7 +178,8 @@ def morphometrics(
     'axon z-profile',
     'axon soma-centered z-profile',
     'dendrite soma-centered z-profile'
-        )):
+        )
+    ):
     
 
     def get_perc_above_below_overlap(profile_a, profile_b):
@@ -237,13 +246,13 @@ def morphometrics(
         if len(T.nodes()) > 5:
 
             z[part+ ' branch points'] = T.get_branchpoints().size
-            extend = T.get_extend()
+            extend = T.get_extent()
 
             z[part + ' width'] = extend[0]
             z[part + ' depth'] = extend[1]
             z[part + ' height'] = extend[2]
 
-            robust_extend = T.get_extend(robust=True)
+            robust_extend = T.get_extent(robust=True)
             z[part + ' robust width'] = robust_extend[0]
             z[part + ' robust depth'] = robust_extend[1]
             z[part + ' robust height'] = robust_extend[2]
@@ -393,11 +402,11 @@ def morphometrics(
                         
                 z['"apical" log1p number of outer bifurcations'] = np.log(outer_bifurcations + 1) 
                 
-                z['"apical" height'] = L.get_extend()[2]
-                z['"apical" width'] = L.get_extend()[0]
+                z['"apical" height'] = L.get_extent()[2]
+                z['"apical" width'] = L.get_extent()[0]
                 
-                z['"apical" robust height'] = L.get_extend(robust=True)[2]
-                z['"apical" robust width'] = L.get_extend(robust=True)[0]
+                z['"apical" robust height'] = L.get_extent(robust=True)[2]
+                z['"apical" robust width'] = L.get_extent(robust=True)[0]
                 
                 z['"apical" total length'] = np.sum(list(L.get_edge_attributes('path_length').values()))
                 z['"apical" branch points'] = len(L.get_branchpoints())
