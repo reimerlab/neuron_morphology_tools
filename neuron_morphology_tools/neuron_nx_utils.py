@@ -50,7 +50,8 @@ compartment_colors = {'apical': 'blue',
  'oblique': 'green',
  'dendrite': 'lightsteelblue',
  'apical_total': 'magenta',
- 'soma': 'black'}
+ 'soma': 'black',
+  None:"blue"}
 
 
 # --- global parameters for vector computations ---
@@ -4708,7 +4709,7 @@ def node_compartment_color_dict(
         comp_colors.update(compartment_color_dict)
     
     color_dict = dict([
-        (n,comp_colors[G.nodes[n]["compartment"]])
+        (n,comp_colors.get(G.nodes[n]["compartment"],comp_colors[None],))
          for n in G.nodes]
     )
     return color_dict
