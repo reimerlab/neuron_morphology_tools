@@ -32,7 +32,7 @@ def get_long_description(filepath='README.md'):
 
 setup(
     name='neuron_morphology_tools', # the name of the package, which can be different than the folder when using pip instal
-    version='1.0.0',
+    version='1.0.1',
     description='',
     long_description=get_long_description(),
 	project_urls={

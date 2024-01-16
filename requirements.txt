@@ -8,4 +8,4 @@ scipy>=1.5.4
 seaborn>=0.11.2
 ipython
 ipython_genutils
-datasci-stdlib-tools>=1.0.0
+datasci-stdlib-tools>=1.0.1
