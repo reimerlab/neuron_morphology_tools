@@ -119,6 +119,39 @@ def summary_statistic_over_synapses(
     node,
     verbose = False,
     **kwargs):
+    """
+    Gets the number and total volume of synapses of
+    a certain head/neck/shaft type and presyn/postsyn type
+    
+    (and does for every super category)
+    
+    Return
+    ------
+        Dictionary with sums/counts
+        
+    Example Output
+    --------------
+        {'synapse_volume_no_head_postsyn_sum': 48932,
+        'n_synapses_no_head_postsyn': 16,
+        'synapse_volume_no_head_sum': 48932,
+        'n_synapses_no_head': 16,
+        'synapse_volume_shaft_postsyn_sum': 186960,
+        'n_synapses_shaft_postsyn': 44,
+        'synapse_volume_shaft_sum': 186960,
+        'n_synapses_shaft': 44,
+        'synapse_volume_head_postsyn_sum': 696432,
+        'n_synapses_head_postsyn': 65,
+        'synapse_volume_head_sum': 696432,
+        'n_synapses_head': 65,
+        'synapse_volume_neck_postsyn_sum': 4680,
+        'n_synapses_neck_postsyn': 3,
+        'synapse_volume_neck_sum': 4680,
+        'n_synapses_neck': 3,
+        'synapse_volume_postsyn_sum': 937004,
+        'n_synapses_postsyn': 128,
+        'synapse_volume_sum': 937004,
+        'n_synapses': 128}
+    """
     
     return nxst.summary_statistic_over_dynamic_attribute(
     G,
@@ -137,6 +170,17 @@ def summary_statistic_over_spines(
     node,
     verbose = False,
     **kwargs):
+    """
+    Calculates the total spine volume and number of spines
+    
+    Return
+    ------
+        Dictionary with sums/counts
+        
+    Example Output
+    --------------
+        {'spine_volume_sum': 26567481267.249374, 'n_spines': 88}
+    """
     
     return nxst.summary_statistic_over_dynamic_attribute(
     G,

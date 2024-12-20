@@ -4720,6 +4720,33 @@ def print_compartment_colors():
     for k,v in nxu.compartment_colors.items():
         print(f"   {k} : {v}")
 
+def soma_start_angle_max(G):
+    """
+    Purpose
+    -------
+    calculates the maximum value of the soma starting angle
+    over all the nodes in the graph (application: use on limb graphs
+    to compute their soma starting angle)
+    """
+    attr = "soma_start_angle"
+    return np.max([
+        G.nodes[n].get(attr,0)
+        for n in G.nodes
+    ])
+    
+def skeletal_length(G):
+    """
+    Purpose
+    -------
+    Compute the summed total skeletal length over all the nodes of a graph
+    """
+    attr = "skeletal_length"
+    return np.sum([
+        G.nodes[n].get(attr,0)
+        for n in G.nodes
+    ])
+    
+    
 #     #4) Return the branches are convert them to coordinates
 #     if return_coordinates:
 #         return 

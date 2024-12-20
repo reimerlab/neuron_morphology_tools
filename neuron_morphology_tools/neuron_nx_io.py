@@ -594,6 +594,16 @@ def compressed_dict_from_G(
     dense_adjacency = True,
     data_name = "data"
     ):
+    """
+    Creates a dictionary from a graph where the key/values are
+    1) global graph attributes
+    2) data: dictionary
+        nodelist: list o fnodes
+        features: names of the features in feature matrix
+        adjacency: dense adjacency matrix
+        feature_matrix: matrix storing feature vectors for each node
+        
+    """
     
     g_atts = xu.graph_attr_dict(G)
     curr_dict = {k:g_atts[k] for k in graph_identifiers}
@@ -809,6 +819,39 @@ def neuron_df_for_train_from_limb_df(
     verbose =False,
     verbose_time = False,
     ):
+    """
+    Purpose:
+    --------
+    Creates a dataframe that has all of the necessary features
+    for the dataset of a whole neuron
+
+    Returns
+    ------------
+    Dataframe with the following columns
+        'segment_id',
+        'split_index',
+        'limb_idx',
+        'soma_start_angle_max',
+        'skeletal_length',
+        'max_soma_volume',
+        'n_syn_soma',
+        'table_of_origin',
+        'names_pool0', #all the names of the nodes in the graph (48 for ex)
+        'x_features_pool0', #names of all of the features in the x (24)
+            # includes the hierarchical 
+        'x_pool0', # values holding all the features for all the nodes (48x24)
+        'edge_index_pool0', all the bidirectional edges (172, 2)
+        'node_weight_pool0', the skeletal length that will be used for pooling (48,)
+        'pool1_names', # names as ints for next hierarchical layer (just the limb indexes) (5,)
+        'pool1', # the indexing that groups which nodes should be pooled together
+                # just giving the nodes ons the same limb the same index number
+        'x_pool1', #fvalues eatures to add on after 1st pooling (the soma start angle max) (5,1)
+        'x_features_pool1', #name of the features to add on after 1st pooling  
+        'edge_index_pool1', #the edge index for all of the limbs
+        'node_weight_pool1', #weight for the pooling (total skeletal length) (5,)
+        'x_pool2', #values features to add on after 2nd pooling (synapses and max soma volume) (1,2)
+        'x_features_pool2' #names of the features to add on after 2nd pooling
+    """
     
     if add_density_to_graph_data:
         df = nxio.add_density_to_graph_data_in_df(
@@ -816,7 +859,6 @@ def neuron_df_for_train_from_limb_df(
             in_place = False,
         )
         
-    
     
     if attributes_pool1 is not None:
         attributes_pool1 = list(attributes_pool1)
