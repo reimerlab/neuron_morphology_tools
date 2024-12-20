@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en">
 <head>
@@ -5,18 +7,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>neuron_morphology_tools.neuron_nx_stats &mdash; neuron_morphology_tools  documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="../../_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="../../_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="../../_static/jquery.js?v=5d32c60e"></script>
-        <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=b3ba4146"></script>
-        <script src="../../_static/doctools.js?v=888ff710"></script>
-        <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js?v=b3ba4146"></script>
+      <script src="../../_static/doctools.js?v=888ff710"></script>
+      <script src="../../_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="../../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" /> 
@@ -192,6 +190,39 @@
     <span class="n">node</span><span class="p">,</span>
     <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gets the number and total volume of synapses of</span>
+<span class="sd">    a certain head/neck/shaft type and presyn/postsyn type</span>
+<span class="sd">    </span>
+<span class="sd">    (and does for every super category)</span>
+<span class="sd">    </span>
+<span class="sd">    Return</span>
+<span class="sd">    ------</span>
+<span class="sd">        Dictionary with sums/counts</span>
+<span class="sd">        </span>
+<span class="sd">    Example Output</span>
+<span class="sd">    --------------</span>
+<span class="sd">        {&#39;synapse_volume_no_head_postsyn_sum&#39;: 48932,</span>
+<span class="sd">        &#39;n_synapses_no_head_postsyn&#39;: 16,</span>
+<span class="sd">        &#39;synapse_volume_no_head_sum&#39;: 48932,</span>
+<span class="sd">        &#39;n_synapses_no_head&#39;: 16,</span>
+<span class="sd">        &#39;synapse_volume_shaft_postsyn_sum&#39;: 186960,</span>
+<span class="sd">        &#39;n_synapses_shaft_postsyn&#39;: 44,</span>
+<span class="sd">        &#39;synapse_volume_shaft_sum&#39;: 186960,</span>
+<span class="sd">        &#39;n_synapses_shaft&#39;: 44,</span>
+<span class="sd">        &#39;synapse_volume_head_postsyn_sum&#39;: 696432,</span>
+<span class="sd">        &#39;n_synapses_head_postsyn&#39;: 65,</span>
+<span class="sd">        &#39;synapse_volume_head_sum&#39;: 696432,</span>
+<span class="sd">        &#39;n_synapses_head&#39;: 65,</span>
+<span class="sd">        &#39;synapse_volume_neck_postsyn_sum&#39;: 4680,</span>
+<span class="sd">        &#39;n_synapses_neck_postsyn&#39;: 3,</span>
+<span class="sd">        &#39;synapse_volume_neck_sum&#39;: 4680,</span>
+<span class="sd">        &#39;n_synapses_neck&#39;: 3,</span>
+<span class="sd">        &#39;synapse_volume_postsyn_sum&#39;: 937004,</span>
+<span class="sd">        &#39;n_synapses_postsyn&#39;: 128,</span>
+<span class="sd">        &#39;synapse_volume_sum&#39;: 937004,</span>
+<span class="sd">        &#39;n_synapses&#39;: 128}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="k">return</span> <span class="n">nxst</span><span class="o">.</span><span class="n">summary_statistic_over_dynamic_attribute</span><span class="p">(</span>
     <span class="n">G</span><span class="p">,</span>
@@ -210,6 +241,17 @@
     <span class="n">node</span><span class="p">,</span>
     <span class="n">verbose</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
     <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Calculates the total spine volume and number of spines</span>
+<span class="sd">    </span>
+<span class="sd">    Return</span>
+<span class="sd">    ------</span>
+<span class="sd">        Dictionary with sums/counts</span>
+<span class="sd">        </span>
+<span class="sd">    Example Output</span>
+<span class="sd">    --------------</span>
+<span class="sd">        {&#39;spine_volume_sum&#39;: 26567481267.249374, &#39;n_spines&#39;: 88}</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     
     <span class="k">return</span> <span class="n">nxst</span><span class="o">.</span><span class="n">summary_statistic_over_dynamic_attribute</span><span class="p">(</span>
     <span class="n">G</span><span class="p">,</span>

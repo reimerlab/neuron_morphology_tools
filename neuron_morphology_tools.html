@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html class="writer-html5" lang="en">
 <head>
@@ -6,18 +8,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>neuron_morphology_tools package &mdash; neuron_morphology_tools  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=80d5e7a1" />
-      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=19f00094" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
 
   
-  <!--[if lt IE 9]>
-    <script src="_static/js/html5shiv.min.js"></script>
-  <![endif]-->
-  
-        <script src="_static/jquery.js?v=5d32c60e"></script>
-        <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
-        <script src="_static/doctools.js?v=888ff710"></script>
-        <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
+      <script src="_static/doctools.js?v=888ff710"></script>
+      <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -228,6 +226,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.set_auto_proof_filter_attribute"><code class="docutils literal notranslate"><span class="pre">set_auto_proof_filter_attribute()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.shortest_path_from_most_upstream"><code class="docutils literal notranslate"><span class="pre">shortest_path_from_most_upstream()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.shuffle_upstream_dist_on_data_attribute"><code class="docutils literal notranslate"><span class="pre">shuffle_upstream_dist_on_data_attribute()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.skeletal_length"><code class="docutils literal notranslate"><span class="pre">skeletal_length()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.skeletal_length_on_path"><code class="docutils literal notranslate"><span class="pre">skeletal_length_on_path()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.skeleton"><code class="docutils literal notranslate"><span class="pre">skeleton()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.skeleton_bbox"><code class="docutils literal notranslate"><span class="pre">skeleton_bbox()</span></code></a></li>
@@ -248,6 +247,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.soma_filter_by_complete_graph"><code class="docutils literal notranslate"><span class="pre">soma_filter_by_complete_graph()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.soma_only_graph"><code class="docutils literal notranslate"><span class="pre">soma_only_graph()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.soma_radius"><code class="docutils literal notranslate"><span class="pre">soma_radius()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.soma_start_angle_max"><code class="docutils literal notranslate"><span class="pre">soma_start_angle_max()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.soma_vector_from_node"><code class="docutils literal notranslate"><span class="pre">soma_vector_from_node()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.spine_shaft_coordinates"><code class="docutils literal notranslate"><span class="pre">spine_shaft_coordinates()</span></code></a></li>
 <li class="toctree-l4"><a class="reference internal" href="#neuron_morphology_tools.neuron_nx_utils.split_location_node_map_df"><code class="docutils literal notranslate"><span class="pre">split_location_node_map_df()</span></code></a></li>
@@ -639,7 +639,16 @@ for all of the branches
 <dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_io.compressed_dict_from_G">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_io.</span></span><span class="sig-name descname"><span class="pre">compressed_dict_from_G</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">features</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph_identifiers</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('segment_id',</span> <span class="pre">'split_index',</span> <span class="pre">'nucleus_id',</span> <span class="pre">'external_layer')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dense_adjacency</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'data'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_io.html#compressed_dict_from_G"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_io.compressed_dict_from_G" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Creates a dictionary from a graph where the key/values are
+1) global graph attributes
+2) data: dictionary</p>
+<blockquote>
+<div><p>nodelist: list o fnodes
+features: names of the features in feature matrix
+adjacency: dense adjacency matrix
+feature_matrix: matrix storing feature vectors for each node</p>
+</div></blockquote>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_io.export_GNN_info_dict">
@@ -666,7 +675,46 @@ in dictionary format to be used by a GNN</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_io.neuron_df_for_train_from_limb_df">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_io.</span></span><span class="sig-name descname"><span class="pre">neuron_df_for_train_from_limb_df</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">df</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sort_attributes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limb_attributes_to_add_to_branches</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('soma_start_angle_max',</span> <span class="pre">'max_soma_volume',</span> <span class="pre">'n_syn_soma')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_limb_attributes_to_branches_even_if_hierarchical</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_pool_suffix</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node_weight_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'skeletal_length'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_weight</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">edge_weight_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'max'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">export_pool1_clusters</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hierarchical</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes_pool1</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('soma_start_angle_max',)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes_pool1_extra</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes_pool2</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('max_soma_volume',</span> <span class="pre">'n_syn_soma')</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">graph_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'binary_tree'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">add_density_to_graph_data</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_io.html#neuron_df_for_train_from_limb_df"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_io.neuron_df_for_train_from_limb_df" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><section id="purpose">
+<h3>Purpose:<a class="headerlink" href="#purpose" title="Permalink to this heading"></a></h3>
+<p>Creates a dataframe that has all of the necessary features
+for the dataset of a whole neuron</p>
+<dl class="field-list">
+<dt class="field-odd">returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>‘segment_id’,
+‘split_index’,
+‘limb_idx’,
+‘soma_start_angle_max’,
+‘skeletal_length’,
+‘max_soma_volume’,
+‘n_syn_soma’,
+‘table_of_origin’,
+‘names_pool0’, #all the names of the nodes in the graph (48 for ex)
+‘x_features_pool0’, #names of all of the features in the x (24)</p>
+<blockquote>
+<div><p># includes the hierarchical</p>
+</div></blockquote>
+<p>‘x_pool0’, # values holding all the features for all the nodes (48x24)
+‘edge_index_pool0’, all the bidirectional edges (172, 2)
+‘node_weight_pool0’, the skeletal length that will be used for pooling (48,)
+‘pool1_names’, # names as ints for next hierarchical layer (just the limb indexes) (5,)
+‘pool1’, # the indexing that groups which nodes should be pooled together</p>
+<blockquote>
+<div><p># just giving the nodes ons the same limb the same index number</p>
+</div></blockquote>
+<p>‘x_pool1’, #fvalues eatures to add on after 1st pooling (the soma start angle max) (5,1)
+‘x_features_pool1’, #name of the features to add on after 1st pooling
+‘edge_index_pool1’, #the edge index for all of the limbs
+‘node_weight_pool1’, #weight for the pooling (total skeletal length) (5,)
+‘x_pool2’, #values features to add on after 2nd pooling (synapses and max soma volume) (1,2)
+‘x_features_pool2’ #names of the features to add on after 2nd pooling</p>
+</dd>
+<dt class="field-even">rtype<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dataframe with the following columns</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
 
 </section>
 <section id="module-neuron_morphology_tools.neuron_nx_stats">
@@ -737,12 +785,57 @@ dictionary for a node in the graph</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_stats.summary_statistic_over_spines">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_stats.</span></span><span class="sig-name descname"><span class="pre">summary_statistic_over_spines</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_stats.html#summary_statistic_over_spines"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_stats.summary_statistic_over_spines" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Calculates the total spine volume and number of spines</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with sums/counts</p>
+</dd>
+</dl>
+<section id="example-output">
+<h3>Example Output<a class="headerlink" href="#example-output" title="Permalink to this heading"></a></h3>
+<blockquote>
+<div><p>{‘spine_volume_sum’: 26567481267.249374, ‘n_spines’: 88}</p>
+</div></blockquote>
+</section>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_stats.summary_statistic_over_synapses">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_stats.</span></span><span class="sig-name descname"><span class="pre">summary_statistic_over_synapses</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">node</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_stats.html#summary_statistic_over_synapses"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_stats.summary_statistic_over_synapses" title="Permalink to this definition"></a></dt>
-<dd></dd></dl>
+<dd><p>Gets the number and total volume of synapses of
+a certain head/neck/shaft type and presyn/postsyn type</p>
+<p>(and does for every super category)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dictionary with sums/counts</p>
+</dd>
+</dl>
+<section id="id1">
+<h3>Example Output<a class="headerlink" href="#id1" title="Permalink to this heading"></a></h3>
+<blockquote>
+<div><p>{‘synapse_volume_no_head_postsyn_sum’: 48932,
+‘n_synapses_no_head_postsyn’: 16,
+‘synapse_volume_no_head_sum’: 48932,
+‘n_synapses_no_head’: 16,
+‘synapse_volume_shaft_postsyn_sum’: 186960,
+‘n_synapses_shaft_postsyn’: 44,
+‘synapse_volume_shaft_sum’: 186960,
+‘n_synapses_shaft’: 44,
+‘synapse_volume_head_postsyn_sum’: 696432,
+‘n_synapses_head_postsyn’: 65,
+‘synapse_volume_head_sum’: 696432,
+‘n_synapses_head’: 65,
+‘synapse_volume_neck_postsyn_sum’: 4680,
+‘n_synapses_neck_postsyn’: 3,
+‘synapse_volume_neck_sum’: 4680,
+‘n_synapses_neck’: 3,
+‘synapse_volume_postsyn_sum’: 937004,
+‘n_synapses_postsyn’: 128,
+‘synapse_volume_sum’: 937004,
+‘n_synapses’: 128}</p>
+</div></blockquote>
+</section>
+</dd></dl>
 
 </section>
 <section id="module-neuron_morphology_tools.neuron_nx_utils">
@@ -1707,6 +1800,15 @@ verbose = True</p>
 </dd></dl>
 
 <dl class="py function">
+<dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_utils.skeletal_length">
+<span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_utils.</span></span><span class="sig-name descname"><span class="pre">skeletal_length</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_utils.html#skeletal_length"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_utils.skeletal_length" title="Permalink to this definition"></a></dt>
+<dd><section id="id2">
+<h3>Purpose<a class="headerlink" href="#id2" title="Permalink to this heading"></a></h3>
+<p>Compute the summed total skeletal length over all the nodes of a graph</p>
+</section>
+</dd></dl>
+
+<dl class="py function">
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_utils.skeletal_length_on_path">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_utils.</span></span><span class="sig-name descname"><span class="pre">skeletal_length_on_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_utils.html#skeletal_length_on_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_utils.skeletal_length_on_path" title="Permalink to this definition"></a></dt>
 <dd></dd></dl>
@@ -1883,6 +1985,17 @@ nxu.draw_tree(G_no_soma)</p>
 <dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_utils.soma_radius">
 <span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_utils.</span></span><span class="sig-name descname"><span class="pre">soma_radius</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stat</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'mean'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_utils.html#soma_radius"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_utils.soma_radius" title="Permalink to this definition"></a></dt>
 <dd><p>Purpose: To find the [stat] distance of the soma from the neighbors</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="neuron_morphology_tools.neuron_nx_utils.soma_start_angle_max">
+<span class="sig-prename descclassname"><span class="pre">neuron_morphology_tools.neuron_nx_utils.</span></span><span class="sig-name descname"><span class="pre">soma_start_angle_max</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">G</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/neuron_morphology_tools/neuron_nx_utils.html#soma_start_angle_max"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#neuron_morphology_tools.neuron_nx_utils.soma_start_angle_max" title="Permalink to this definition"></a></dt>
+<dd><section id="id3">
+<h3>Purpose<a class="headerlink" href="#id3" title="Permalink to this heading"></a></h3>
+<p>calculates the maximum value of the soma starting angle
+over all the nodes in the graph (application: use on limb graphs
+to compute their soma starting angle)</p>
+</section>
 </dd></dl>
 
 <dl class="py function">
