@@ -9,7 +9,7 @@ You have two options for setting up the Docker environment:
 ### 1. Pull the Prebuilt Image
 
 ```bash
-docker pull celiib/neuron_morphology_tools:latest
+docker pull celiib/neuron_morphology:latest
 ```
 
 ### 2. Build the Image Locally
