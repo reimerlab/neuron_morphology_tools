@@ -1,0 +1,18 @@
+version: "2"
+services:
+  notebook:
+    image: celiib/neuron_morphology:latest
+    build:
+      context: .
+    env_file: .env
+    environment:
+      - DISPLAY=$DISPLAY
+      - XSOCK=/tmp/.X11-unix/X0
+    ports:
+      - "8890:8888"
+    volumes:
+      - ./notebooks:/notebooks
+      - ../Applications:/Applications
+      - ../../neuron_morphology_tools:/neuron_morphology_tools
+      #- ../examples:/examples
+      #- /mnt:/mnt
