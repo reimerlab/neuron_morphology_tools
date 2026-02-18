@@ -234,6 +234,7 @@ def remove_node(
     verbose = False,
     maintain_skeleton_connectivity = True,
     remove_all_downstream_nodes = False,
+    debug = False,
     **kwargs
     ):
     """
@@ -328,7 +329,20 @@ def remove_node(
                                                      width = width_upstream_curr)] + G.nodes[n]["width_data"]
                     
         if not remove_all_downstream_nodes:
-            xu.remove_node_reattach_children_di(G,node,inplace = True)
+            # print(f"Attempting to remove")
+            # print(f"str(node) not in G.nodes() = {str(node) not in G.nodes()}")
+            # print(f"node = {str(node)}, G.nodes() = {G.nodes()}")
+            # if str(node) not in G.nodes():
+            #     if debug:
+            #         print(f"Attempting to remove {node} that doesn't exist in current nodes: {list(G.nodes())})")
+            #     continue
+            # G_copy = G.copy()
+            xu.remove_node_reattach_children_di(G,str(node),inplace = True)
+            # try:
+            #     xu.remove_node_reattach_children_di(G,str(node),inplace = True)
+            # except:
+            #     if debug:
+            #         print(f"Could not remove node {node} (current nodes: {list(G.nodes())})")
         else:
             all_downstream_nodes = xu.all_downstream_nodes(G,node)
             total_nodes_to_delete = [node] 
@@ -339,6 +353,48 @@ def remove_node(
                 print(f"Removing all downstream nodes along with node {node}: {total_nodes_to_delete}")
             G = xu.remove_nodes_from(G,total_nodes_to_delete)
             
+    return G
+
+def remove_node_reattach_children_di(
+    G,
+    node,
+    inplace = True,
+    verbose = False,):
+    """
+    Purpose: To remove a node and reattach any children to the parents
+    
+    Pseudocode: 
+    1) Get the parent of the node
+    2) Get the children of the node
+    3) Remove the node
+    4) Create edges from the parent to the children
+    
+    Example: 
+    
+    import networkx as nx
+    import matplotlib.pyplot as plt
+    G1 = nx.DiGraph()
+    G1.add_edges_from([[1,2],[2,3],[2,4]])
+    print(f"Before")
+    nx.draw(G1,with_labels = True)
+    plt.show()
+    G1_new = remove_edge_reattach_children_di(G1,2)
+    print(f"After removal")
+    nx.draw(G1_new,with_labels = True)
+    """
+    if not inplace:
+        G = copy.deepcopy(G)
+    parent = xu.upstream_node(G,node)
+    children = xu.downstream_nodes(G,node)
+    
+    G.remove_nodes_from([node])
+    new_edges = [(parent,k) for k in children]
+    G.add_edges_from(new_edges)
+    
+    if verbose:
+        print(f"For node {node}")
+        print(f"parent = {parent}, children = {children}")
+        print(f"new_edges = {new_edges}")
     return G
     
 
@@ -444,7 +500,11 @@ def export_swc_dicts(
     coordinate_divisor = 1000,
     width_divisor = 1000,
     verbose = False,
+    verbose_center_point = False,
+    return_center_point = False,
+    return_node_to_index_map = False,
     return_df = False,
+    
     ):
     """
     Purpose: To convert a Graph Neuron Object
@@ -458,6 +518,11 @@ def export_swc_dicts(
         3) Get the parent idx
 
     """
+    G = nxu.clean_G(
+        G,
+        remove_small_starter_branches_flag = False,
+        remove_small_endnode_branches_flag = False,
+    )
 
     index = 0
 
@@ -473,9 +538,13 @@ def export_swc_dicts(
         node_order = nx.dfs_preorder_nodes(
             G,source = source_node)
 
+    if verbose_center_point:
+        print(f"center_point = {center_point} (with center_on_soma = {center_on_soma}) ")
     
     node_to_index_map = dict()
     swc_dicts = []
+    endpoints = []
+    endpoints_tol = 0.00001
     for n in node_order:
         if verbose:
             print(f"\n---Working on {n}")
@@ -485,12 +554,14 @@ def export_swc_dicts(
             skeleton_pts = G.nodes[n]["skeleton_data"][1:]
         else:
             skeleton_pts = np.array([G.nodes[n][default_skeleton_pt]])
+            
 
         curr_compartment  = G.nodes[n]["compartment"]
         if n == source_node:
             if n != soma_node_name: 
                 curr_compartment = "soma"
             parent_idx = -1
+            parent_name = None
         else:
             parent_name = xu.parent_node(G,n)
             parent_idx = node_to_index_map[parent_name][-1]
@@ -509,23 +580,57 @@ def export_swc_dicts(
             
 #         if curr_compartment == "dendrite":
 #             curr_compartment = default_compartment
-
+        
         if center_on_soma:
             skeleton_pts = skeleton_pts - center_point
+            
 
         if verbose:
             print(f"skeleton_pts = {skeleton_pts}")
             print(f"parent_idx= {parent_idx}")
+            print(f"parent_name = {parent_name}")
             print(f"curr_compartment= {curr_compartment}")
 
+        
+
+        previous_skeleton_pt = None
+        start = True
         for i,coord in enumerate(skeleton_pts):
+            
+            curr_sk_pt = np.array([
+                    coord[0]/coordinate_divisor,
+                    coord[1]/coordinate_divisor,
+                    coord[2]/coordinate_divisor,
+                ])
+            
+            #check if any coordinates were already in the endpoints of another
+            
+            if len(endpoints)>0:
+                if any(np.linalg.norm(np.array(endpoints).reshape(-1,3) - curr_sk_pt,axis=1)<endpoints_tol):
+                    # print(f"curr_sk_pt = {curr_sk_pt}")
+                    # print(f"endpoints = {endpoints}")
+                    #print(f"skipped because endpoint")
+                    continue
+            
+            if previous_skeleton_pt is not None:
+                if np.linalg.norm(curr_sk_pt - previous_skeleton_pt) < 0.00001:
+                    #print(f"skipped node")
+                    continue
+                    
+            previous_skeleton_pt = curr_sk_pt
             index += 1
 
-            if i == 0:
+            if start:
                 curr_parent_idx = parent_idx
+                start = False
             else:
                 curr_parent_idx = index - 1
+            
+            # if n == "L5_10":
+            #     print(f"index = {index}")
+            #     print(f"curr_parent_idx= {curr_parent_idx}")
 
+            
             curr_dict = {
                 "n":index,
                 "type":compartment_index_swc_map[curr_compartment],
@@ -538,10 +643,21 @@ def export_swc_dicts(
             node_to_index_map[n].append(index)
 
             swc_dicts.append(curr_dict) 
+            
+        if len(skeleton_pts) > 0:
+            endpoints.append(skeleton_pts[-1]/coordinate_divisor)
+            
     
     if return_df:
-        pd.DataFrame.from_records(swc_dicts)
-    return swc_dicts
+        swc_dicts = pd.DataFrame.from_records(swc_dicts)
+    if not return_node_to_index_map and not return_center_point:
+        return swc_dicts
+    return_value = [swc_dicts]
+    if return_center_point:
+        return_value.append(center_point)
+    if return_node_to_index_map:
+        return_value.append(node_to_index_map)
+    return return_value
 
 def export_swc_df(G,**kwargs):
     return pd.DataFrame.from_records(export_swc_dicts(G,return_df=True,**kwargs))
@@ -555,13 +671,33 @@ def export_swc_file(
     filepath = None,
     verbose = False,
     header =True,
+    verbose_center_point = False,
+    return_center_point = False,
+    return_node_to_index_map = False,
     **kwargs):
     """
     Purpose: Create a SWC file from 
     graph object
     """
     
-    swc_dicts= nxu.export_swc_dicts(G,verbose = False)
+    return_value= nxu.export_swc_dicts(
+        G,
+        verbose_center_point=verbose_center_point,
+        return_center_point=return_center_point,
+        return_node_to_index_map = return_node_to_index_map,
+        verbose = False)
+    
+    if return_center_point:
+        if return_node_to_index_map:
+            swc_dicts,center_point,node_to_index_map = return_value
+        else:
+            swc_dicts,center_point = return_value
+    else:
+        if return_node_to_index_map:
+            swc_dicts,node_to_index_map = return_value
+        else:
+            swc_dicts = return_value
+        
     if filename is None:
         filename = f"seg_{G.graph['segment_id']}_split_{G.graph['split_index']}_nucleus_{G.graph['nucleus_id']}"
 
@@ -571,7 +707,7 @@ def export_swc_file(
     if filename[-4:] != ".swc":
         filename += ".swc"
         
-    return fileu.file_from_dicts(
+    return_filepath = fileu.file_from_dicts(
         swc_dicts,
         header = header,
         filename = filename,
@@ -580,7 +716,14 @@ def export_swc_file(
         seperation_character=" ",
         verbose = verbose
     )
-    
+    if not return_node_to_index_map and not return_center_point:
+        return return_filepath
+    return_value = [return_filepath]
+    if return_center_point:
+        return_value.append(center_point)
+    if return_node_to_index_map:
+        return_value.append(node_to_index_map)
+    return return_value
 
 
 
@@ -3064,10 +3207,40 @@ def fix_flipped_skeleton(
         if len(curr_dict) == 0:
             continue
         endpt_up = curr_dict["endpoint_upstream"]
-        sk_up = curr_dict["skeleton_data"][0]
-        if not np.array_equal(endpt_up,sk_up):
-            G.nodes[n]["skeleton_data"] = np.flip(curr_dict["skeleton_data"],axis=0)
-            node_flipped.append(n)
+        endpt_down = curr_dict["endpoint_downstream"]
+        
+        width_points = [k["width"] for k in G.nodes[n]["width_data"]]
+        
+
+        if len(curr_dict["skeleton_data"]) > 1:
+            sk_up = curr_dict["skeleton_data"][0]
+            sk_down = curr_dict["skeleton_data"][-1]
+            
+            sk_up_dist = np.linalg.norm(endpt_up - sk_up)
+            sk_down_dist = np.linalg.norm(endpt_up - sk_down)
+            
+            if sk_up_dist > sk_down_dist:
+                G.nodes[n]["skeleton_data"] = np.flip(curr_dict["skeleton_data"],axis=0)
+                G.nodes[n]["width_data"] = G.nodes[n]["width_data"][::-1]
+                node_flipped.append(n)
+            
+        # -- making sure the upstream and downstream of the skeletons are correct --
+        tol = 0.0001
+        sk_up = G.nodes[n]["skeleton_data"][0]
+        if np.linalg.norm(endpt_up-sk_up) > tol:
+            curr_dict["skeleton_data"] = np.vstack([
+                endpt_up.reshape(-1,3),
+                G.nodes[n]["skeleton_data"]
+                ])
+            G.nodes[n]["width_data"] = [G.nodes[n]["width_data"][0]] + G.nodes[n]["width_data"]
+            
+        sk_down = G.nodes[n]["skeleton_data"][-1]
+        if np.linalg.norm(endpt_down-sk_down) > tol:
+            curr_dict["skeleton_data"] = np.vstack([
+                G.nodes[n]["skeleton_data"],
+                endpt_down.reshape(-1,3),
+                ])
+            G.nodes[n]["width_data"] =  G.nodes[n]["width_data"] + [G.nodes[n]["width_data"][-1]]
 
     if verbose:
         print(f"Nodes with skeleton flipped: {node_flipped}")
@@ -4215,24 +4388,28 @@ def small_endnode_branches(
     2) Find the skeletal length of all the leaf nodes
     3) Identify any that are subthreshold
     """
+    
     if dendrite_only:
-        G = nxu.dendrite_subgraph(G)
+        G_process = nxu.dendrite_subgraph(G)
+    else:
+        G_process = G
     
     if skeletal_length_min is None:
         skeletal_length_min = default_small_endnodes_skeltal_length_min
     
-    if nxu.soma_only_graph(G):
+    if nxu.soma_only_graph(G_process):
         return []
     
-    leaf_nodes = xu.leaf_nodes(G)
+    leaf_nodes = [k for k in xu.leaf_nodes(G_process)
+                  if k in xu.leaf_nodes(G)]
     
     if exclude_soma_connected_nodes:
-        leaf_nodes = np.setdiff1d(leaf_nodes,nxu.soma_connected_nodes(G))
+        leaf_nodes = np.setdiff1d(leaf_nodes,nxu.soma_connected_nodes(G_process))
     
     if verbose:
         print(f"Leaf nodes (after soma connected excluded): {leaf_nodes}")
         
-    leaf_nodes_sub_thresh = [k for k in leaf_nodes if G.nodes[k]["skeletal_length"] < skeletal_length_min]
+    leaf_nodes_sub_thresh = [k for k in leaf_nodes if G_process.nodes[k]["skeletal_length"] < skeletal_length_min]
     
     if verbose:
         print(f"Leaf nodes (after skeletal length min {skeletal_length_min}) = {leaf_nodes_sub_thresh}")
@@ -4271,6 +4448,7 @@ def remove_small_endnode_branches(
             print(f"Soma End Node Branches = {sm_end_branches}")
 
         G.remove_nodes_from(sm_end_branches)
+        #raise Exception("")
 
         if not loop_until_fail:
             break
@@ -4672,8 +4850,9 @@ def clean_G(
     G,
     verbose =False,
     debug_time = False,
-    **kwargs):
-    
+    remove_small_starter_branches_flag = True,
+    remove_small_endnode_branches_flag = True,
+    ):
     if debug_time:
         print(f"Total time for pulling down neuron graph obj: {time.time() - st}")
         st = time.time()
@@ -4690,10 +4869,10 @@ def clean_G(
         print(f"Total time for fixing width inf: {time.time() - st}")
         st = time.time()
 
-    if remove_small_starter_branches:
+    if remove_small_starter_branches_flag:
         return_G = nxu.remove_small_starter_branches(return_G)
 
-    if remove_small_endnode_branches:
+    if remove_small_endnode_branches_flag:
         return_G = nxu.remove_small_endnode_branches(return_G)
     
     return return_G
@@ -4746,6 +4925,114 @@ def skeletal_length(G):
         for n in G.nodes
     ])
     
+def closest_sk_coordinate_from_upstream_dist(upstream_synapse_dist,skeleton,debug = False):
+    sk_array = skeleton
+    upstream_dist = np.cumsum(np.linalg.norm(sk_array[1:] - sk_array[:-1],axis = 1))
+    
+    left_insert = np.searchsorted(upstream_dist,upstream_synapse_dist,side="left")
+    left_insert[left_insert >= len(upstream_dist)] = left_insert[left_insert >= len(upstream_dist)]-1
+    other_end = left_insert - 1
+    other_end[other_end<0] = 0
+    upstream_closer = np.abs(upstream_dist[other_end] - upstream_synapse_dist)>np.abs(upstream_dist[left_insert] - upstream_synapse_dist)
+    if debug:
+        print(f"upstream_closer = {upstream_closer}")
+
+    
+    syn_sk = sk_array[left_insert]
+    syn_sk[upstream_closer] = sk_array[left_insert[upstream_closer]+1]
+    return syn_sk
+
+def closest_sk_coordinate_for_synapses(node_dict,**kwargs):
+    synapse_upstream_dist = np.array([k['upstream_dist'] for k in node_dict["synapse_data"]])
+    if len(synapse_upstream_dist)<= 0:
+        return np.array([])
+    sk_array = node_dict['skeleton_data']
+    return closest_sk_coordinate_from_upstream_dist(synapse_upstream_dist,sk_array,**kwargs)
+    
+def synapse_df_with_sk_coordinate_from_G(
+    G,
+    syn_attributes = ('syn_id','syn_type'),
+    syn_attributes_additional = ('volume','head_neck_shaft'),
+    branch_attributes = ('compartment',),
+    skeleton_point_for_soma = "mesh_center",
+    add_neuron_name = True,
+    neuron_name_column = "name",
+    add_node_name = True,
+    ):
+    
+    """
+    2. generate a synapse dataframe for each neuron object
+    
+    Pseudocode
+    ----------
+    For each node in the graph
+    1. get all the synapse objects
+    2a. If soma node, use the mesh center for all synapses
+    2b. if neurite node, use nxu.closest_sk_coordinate_for_synapses
+    3. Create a new lsit of dictionaries for all synapses with the following attributes
+    - syn_id
+    - skeleton point
+    - syn_type
+    - optional attributes: [volume,head_neck_shaft]
+    4. Create a dataframe from dictionaries
+    5. Add any optional branch attributes (compartemnt)
+    """
+    
+    syn_attributes_additional = list(syn_attributes_additional or [])
+    branch_attributes = list(branch_attributes or [])
+    syn_attributes_to_add = list(syn_attributes) + syn_attributes_additional
+    
+    G = nxu.clean_G(
+        G,
+        remove_small_starter_branches_flag = False,
+        remove_small_endnode_branches_flag = False,
+        )
+    
+    syn_dfs = []
+    for n in G.nodes():
+        node_info = G.nodes[n]
+    
+        if "synapse_data" not in node_info:
+            continue
+    
+        # continue if no synapses
+        syn_list = node_info["synapse_data"]
+        if len(syn_list) <= 0:
+            continue
+            
+        if "S" in n:
+            sk_points = np.repeat([node_info['mesh_center'].reshape(-1,3)],len(syn_list),axis=0)
+        else:
+            sk_points = nxu.closest_sk_coordinate_for_synapses(node_info,debug = False)
+        
+    
+        syn_info_dicts = [
+            dict([(v,k[v]) for v in syn_attributes_to_add]) for k in syn_list]
+        
+        # for i,syn_d in enumerate(syn_info_dicts):
+        #     syn_d['skeleton_pt'] = sk_points[i]
+        
+        syn_df = pd.DataFrame.from_records(syn_info_dicts)
+        
+        # sk_points = np.array(sk_points).reshape(-1,3)
+        syn_df['skeleton_pt'] = list(sk_points)
+    
+        for att in branch_attributes:
+            syn_df[att] = node_info[att]
+            
+        if add_node_name:
+            syn_df['node'] = n
+        syn_dfs.append(syn_df)
+    
+    if len(syn_dfs) == 0:
+        return pd.DataFrame()
+    total_syn_df = pd.concat(syn_dfs,axis = 0).reset_index(drop=True)
+    
+    if add_neuron_name:
+        graph_dict = G.graph
+        name = f"{graph_dict['segment_id']}_{graph_dict['split_index']}"
+        total_syn_df[neuron_name_column] = name
+    return total_syn_df
     
 #     #4) Return the branches are convert them to coordinates
 #     if return_coordinates:
